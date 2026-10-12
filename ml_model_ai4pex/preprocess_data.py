@@ -90,15 +90,13 @@ def open_and_process_data(scenario,
 
         ds[region] = ds_region
 
-        # #! a hack to drop coords that prevent concat.
-        # coords_to_drop = ['z_c', 'gdept_1d', 'gdept_0', 'nav_lev']
-        # for coords in coords_to_drop:
-        #     if coords in ds[region].coords:
-        #         ds[region] = ds[region].reset_coords(coords, drop=True)
-
     dataset_list = [ds[region] for region in domain]
 
     ds_combined = xr.concat(dataset_list, dim='r')
+
+    # Drop z_c coordinate that emerges from the mke .nc files
+    if 'z_c' in ds_combined.dims:
+        ds_combined = ds_combined.drop_dims('z_c')
 
     return ds_combined, sc_transformed
 

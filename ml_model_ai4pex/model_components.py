@@ -2,6 +2,7 @@
 """Shared model components including custom Keras layers and the Scenario dataclass."""
 
 import os
+import json
 from dataclasses import dataclass
 from typing import Iterable, List, Tuple
 
@@ -212,3 +213,37 @@ class ChannelSpatialSE(keras.layers.Layer):
         config = super().get_config()
         config.update({'filters': self.filters, 'ratio': self.ratio})
         return config
+
+
+def _to_json(obj):
+    '''Fallback for json.dump: numpy scalars/arrays -> python, else str.'''
+    if hasattr(obj, 'tolist'):
+        return obj.tolist()
+    return str(obj)
+
+
+class ProvenanceMixin:
+    '''
+    Stores a training record (a JSON-serialisable dict in `self.provenance`)
+    inside the .keras archive as assets/provenance.json, and restores it
+    on keras.saving.load_model. Keras calls save_assets/load_assets on the
+    model during save/load.
+
+    Models saved before this was added load with provenance = None.
+    Read without loading the model:
+        unzip -p model.keras assets/provenance.json
+    '''
+    provenance = None
+    _provenance_filename = 'provenance.json'
+
+    def save_assets(self, dir_path):
+        if self.provenance is None:
+            return
+        with open(os.path.join(dir_path, self._provenance_filename), 'w') as f:
+            json.dump(self.provenance, f, indent=2, default=_to_json)
+
+    def load_assets(self, dir_path):
+        path = os.path.join(dir_path, self._provenance_filename)
+        if os.path.exists(path):
+            with open(path) as f:
+                self.provenance = json.load(f)

@@ -46,6 +46,9 @@ def parse_args(argv=None):
     parser.add_argument("--train_stride", type=int, default=None, help="Stride to use when sampling the training data.")
     parser.add_argument("--shuffle_seed", type=int, default=None, help="Random seed for shuffling the data. Omit for no shuffling.")
 
+    # time dependency training
+    parser.add_argument("--n_lags", type=int, default=None, help="Number of lagged time steps to include as features. 0 = no lagged features, N = current + 5N past timesteps.")
+
     # Seasonal omission for training only (validation stays untouched)
     parser.add_argument(
         "--train_omit_seasons",
@@ -185,8 +188,10 @@ def parse_args(argv=None):
 
         parser.set_defaults(**kept)
 
-    args = parser.parse_args(remaining)
-    # args.config = pre_args.config
+    # re-parse the full command line with the yaml values as defaults, so any
+    # flag given on the command line wins, including ones absent from the yaml
+    # (parsing only `remaining` silently dropped those, e.g. --model_filename)
+    args = parser.parse_args(argv)
 
     # check if any required arguments are missing
     required_args = [

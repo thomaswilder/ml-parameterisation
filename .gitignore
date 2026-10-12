@@ -36,3 +36,6 @@ saved_model/
 
 # OS
 .DS_Store
+
+# Local tests: kept out of the repository (tests/__init__.py and tests/test_smoke.py are tracked and stay so)
+tests/

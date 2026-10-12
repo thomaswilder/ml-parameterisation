@@ -33,7 +33,7 @@ def _get_split_indices_from_nt(nt: int, args, t_months=None):
     test_idx = np.arange(nt - n_test_t, nt)
     val_idx = np.arange(nt - n_test_t - n_val_t, nt - n_test_t)
     train_idx_full = np.arange(0, nt - n_test_t - n_val_t)
-
+    
     # Optionally omit specific months/seasons from the training split only.
     omit_months = _get_omit_months_from_args(args)
     if omit_months:
@@ -61,7 +61,6 @@ def _get_split_indices_from_nt(nt: int, args, t_months=None):
     train_idx = train_idx_full[::train_stride]
 
     return train_idx, val_idx, test_idx
-
 
 def _get_omit_months_from_args(args):
     """
@@ -102,7 +101,6 @@ def _get_omit_months_from_args(args):
 
     months = sorted(months)
     return months if months else None
-
 
 def _get_t_months(ds: xr.Dataset):
     """
@@ -220,7 +218,7 @@ def get_data(scenario, args, logger):
         )
     elif args.global_norm:
         raise NotImplementedError("Global normalization not implemented yet.")
-    elif args.local_norm==None or args.global_norm==None:
+    elif args.local_norm is None or args.global_norm is None:
         raise ValueError("Must specify either local_norm or global_norm.")
 
     logger.info(
@@ -260,14 +258,16 @@ def get_data_split(ds, args, logger):
 
     # get the data splits and return
     if args.train:
-        ds_train = ds.isel(t=train_idx)
-        ds_train_flat = ds_train.stack(sample=("r", "t"))
-        ds_val   = ds.isel(t=val_idx)
-        ds_val_flat = ds_val.stack(sample=("r", "t"))   
+        if args.n_lags > 0:
+            train_out = ds.isel(t=train_idx)
+            val_out   = ds.isel(t=val_idx)
+        else:
+            train_out = ds.isel(t=train_idx).stack(sample=("r", "t"))
+            val_out   = ds.isel(t=val_idx).stack(sample=("r", "t"))
         logger.info(
-            f"Datasets split complete for training. Train set: {ds_train_flat}, Val set: {ds_val_flat}"
+            f"Datasets split complete for training. Train set: {train_out}, Val set: {val_out}"
         )
-        return ds_train_flat, ds_val_flat
+        return train_out, val_out
     else:
         ds_val   = ds.isel(t=val_idx)
         ds_test  = ds.isel(t=test_idx)
@@ -307,4 +307,38 @@ def get_data_shuffle(ds, args, logger):
     )
 
     return ds_shuffled
+
+def build_lag_sample_index(ds, args, logger):
+
+    """
+    Build the flat list of (r_idx, t_anchor) samples for the lagged path.
+
+    Each row is one training sample. t_anchor is the index of the *current*
+    timestep; its lagged partner is at t_anchor - args.n_lags. Only anchors
+    with a valid lag history are kept. The list is shuffled with
+    args.shuffle_seed (None → non-deterministic, matching get_data_shuffle).
+    """
+
+    if logger and args.verbose:
+        logger.info(
+            f"Building lagged sample indices with n_lags: {args.n_lags}"
+        )
+
+    n_r = ds.sizes['r']
+    n_t = ds.sizes['t']
+    n_lags = args.n_lags
+
+    r_grid, t_grid = np.meshgrid(
+        np.arange(n_r),
+        np.arange(n_lags, n_t),   # t_anchor must have t_anchor - n_lags >= 0
+        indexing='ij',
+    )
+    samples = np.stack([r_grid.ravel(), t_grid.ravel()], axis=1)  # (N, 2)
+
+    rng = np.random.default_rng(args.shuffle_seed)
+    rng.shuffle(samples, axis=0)
+
+    return samples
+
+    
     

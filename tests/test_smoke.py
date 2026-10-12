@@ -46,6 +46,7 @@ def _unet_args(season=False):
         test_ratio=0.15,
         train_stride=1,
         shuffle_seed=42,
+        n_lags=0,
         # CNN-specific (unused)
         filters=None, kernels=None, padding=None, dilation_rates=None,
     )

@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+
 """U-Net model for spatial prediction tasks with configurable depth."""
 
 import os
@@ -8,13 +9,14 @@ os.environ["KERAS_BACKEND"] = "tensorflow"
 import keras
 from ml_model_ai4pex.model_components import (
     ChannelSpatialSE, 
+    ProvenanceMixin,
     ReplicationPadding2D, 
     Scenario
 )
 
 
 @keras.saving.register_keras_serializable(package="unet", name="UNet")
-class UNet(keras.Model):
+class UNet(ProvenanceMixin, keras.Model):
     '''
     A simple U-Net with configurable depth.
 

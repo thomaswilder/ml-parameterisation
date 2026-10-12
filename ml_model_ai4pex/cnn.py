@@ -9,12 +9,13 @@ import keras
 
 from ml_model_ai4pex.model_components import (
     ChannelSpatialSE,
+    ProvenanceMixin,
     ReplicationPadding2D,
     Scenario,
 )
 
 @keras.saving.register_keras_serializable(package="cnn", name="CNN")
-class CNN(keras.Model):
+class CNN(ProvenanceMixin, keras.Model):
     '''
     A fully convolutional neural network class using keras api
     '''

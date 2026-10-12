@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """Prediction functions for loading trained models and generating predictions on test data."""
 
 import numpy as np
@@ -50,17 +51,45 @@ def predict_model(scenario, ds_test, args, logger=None):
     n_regions = ds_test.sizes.get("r", 1)
     pred_list = []
 
+    n_lags = getattr(args, 'n_lags', 0) or 0
+
     for r_idx in range(n_regions):
         ds_region = ds_test.isel(r=r_idx)
 
         # build input / target arrays
-        batch_input = xr.merge(
-            [ds_region[x] for x in scenario.input_var]
-        ).to_array('var').transpose('t', 'y_c', 'x_c','var')
+        if n_lags == 0:
+            batch_input = xr.merge(
+                [ds_region[x] for x in scenario.input_var]
+            ).to_array('var').transpose('t', 'y_c', 'x_c','var')
 
-        batch_target = xr.merge(
-            [ds_region[x] for x in scenario.target]
-        ).to_array('var').transpose('t', 'y_c', 'x_c','var')
+            batch_target = xr.merge(
+                [ds_region[x] for x in scenario.target]
+            ).to_array('var').transpose('t', 'y_c', 'x_c','var')
+
+            time_values = ds_region.t.values
+        else:
+            # Lagged path: drop first n_lags timesteps (no lag history).
+            n_t = ds_region.sizes['t']
+            t_anchor = np.arange(n_lags, n_t)
+            t_cur = xr.DataArray(t_anchor, dims='sample')
+            t_lag = xr.DataArray(t_anchor - n_lags, dims='sample')
+
+            cur_slice = ds_region.isel(t=t_cur)
+            lag_slice = ds_region.isel(t=t_lag)
+
+            # Group-by-variable channels: [var0_t, var0_{t-n_lags}, var1_t, ...]
+            input_arrays = []
+            for var in scenario.input_var:
+                input_arrays.append(cur_slice[var])
+                input_arrays.append(lag_slice[var])
+            batch_input = xr.concat(input_arrays, dim='var') \
+                            .transpose('sample', 'y_c', 'x_c', 'var')
+
+            target_arrays = [cur_slice[v] for v in scenario.target]
+            batch_target = xr.concat(target_arrays, dim='var') \
+                              .transpose('sample', 'y_c', 'x_c', 'var')
+
+            time_values = ds_region.t.values[n_lags:]
 
         prediction = model.predict(batch_input.to_numpy())
 
@@ -89,7 +118,7 @@ def predict_model(scenario, ds_test, args, logger=None):
             coords={
                 "time_counter": (
                     ["time_counter"],
-                    ds_region.t.values,
+                    time_values,
                     ds_region.t.attrs if hasattr(ds_region.t, 'attrs') else {},
                 ),
                 "gphit": (
@@ -105,9 +134,9 @@ def predict_model(scenario, ds_test, args, logger=None):
                 "var": scenario.target,
             },
             attrs={
-                "Title": f"{target_name} - predicted and truth",
+                "Title": f"Fine kinetic energy - predicted and truth",
                 "Description": (
-                    f"Predicted {target_name} from coarse-grained data using CNN"
+                    f"Predicted fine kinetic energy from coarse-grained data using CNN"
                 ),
                 "Units": ["m$^2$/s$^2$"], 
                 "Source": model_path,
@@ -123,12 +152,16 @@ def predict_model(scenario, ds_test, args, logger=None):
 
     # save to file if requested
     if args.predict_save_filename:
-        stem = Path(args.model_filename).stem
-        datetime_str = stem.split('_')[1]
+        if args.predict_save_filename.endswith('.nc'):
+            save_path = args.predict_save_dir + args.predict_save_filename
+        else:
+            stem = Path(args.model_filename).stem
+            datetime_str = stem.split('_')[1]
 
-        save_path = args.predict_save_dir \
-            + args.predict_save_filename +\
-            f"_{datetime_str}.nc"
+            save_path = args.predict_save_dir \
+                + args.predict_save_filename +\
+                f"_{datetime_str}.nc"
+            
         pred_ds.to_netcdf(save_path)
         if logger:
             logger.info(f"Predictions saved to {save_path}")

@@ -14,6 +14,7 @@ data:
     mesh_mask_exp4_{domain}_xnemo.nc
   features: "vor coarse_ke sa"
   target: "fine_ke"
+  n_lags: 0 # 0 = no lagged features, N = current + 5N past timesteps
 
 data_split: # split must sum to 1.0
   train_ratio: 0.83
@@ -58,6 +59,7 @@ training:
   early_stopping_min_delta: 0.001
   early_stopping_start_from_epoch: 30
   use_attention: false
+  pickup: false
   use_ema: true
   ema_momentum: 0.99
 
