@@ -4,6 +4,11 @@
 import numpy as np
 import xarray as xr
 import copy
+import logging
+
+# data_preparation is not handed the run's logger, so warnings go to this
+# module's logger; run_model.py's logging.basicConfig sends them to the run's log file
+logger = logging.getLogger(__name__)
 
 #--------------------------------------------------------
 # Set of functions
@@ -254,8 +259,20 @@ class data_preparation:
         for variable in self.sc.input_var:
             # if variable=="coarse_ke_f" or variable=="slope":
             if variable == 'coarse_ke' or variable == 'coarse_ke_shift' or variable == 'fine_ke_shift':
+                values = self.ds[variable].compute()
+                # zero or negative values have no log: treat them as missing, so
+                # they become NaN (never -inf) and are filled with 0 below
+                not_positive = values <= 0
+                n_not_positive = int(not_positive.sum())
+                if n_not_positive > 0:
+                    logger.warning(
+                        "%s: %d value(s) that are zero or negative are treated "
+                        "as missing before the log is taken",
+                        variable, n_not_positive,
+                    )
+                    values = values.where(~not_positive)
                 self.ds[variable + "_log"] = xr.apply_ufunc(
-                    np.log, self.ds[variable].compute(),
+                    np.log, values,
                     input_core_dims=[['t', 'y_c', 'x_c']],
                     output_core_dims=[['t', 'y_c', 'x_c']],
                 )

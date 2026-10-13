@@ -164,8 +164,11 @@ def parse_args(argv=None):
                 cfg[parent_keys] = parent_values
         
         # override arguments from yaml config file with command line arguments (if provided)
+        # an argument still at its parser default is taken as not given on the command
+        # line, so the yaml value is kept (otherwise learning_rate in the yaml is ignored);
+        # a flag given with its default value still wins in the final parse below
         for k, v in cfg.items():
-            if getattr(pre_args, k) is not None:
+            if getattr(pre_args, k) is not None and getattr(pre_args, k) != parser.get_default(k):
                 # print(f"Overriding config value for {k} with command line argument: {getattr(pre_args, k)}")
                 cfg[k] = getattr(pre_args, k)
         
