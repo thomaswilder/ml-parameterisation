@@ -14,7 +14,6 @@ data:
     mesh_mask_exp4_{domain}_xnemo.nc
   features: "vor coarse_ke sa"
   target: "fine_ke"
-  n_lags: 0 # 0 = no lagged features, N = current + 5N past timesteps
 
 data_split: # split must sum to 1.0
   train_ratio: 0.83
@@ -22,14 +21,6 @@ data_split: # split must sum to 1.0
   test_ratio: 0.085
   train_stride: 5
   shuffle_seed: 41 # keep fixed to ensure shuffling consistent across runs
-  # Optional: omit seasons from the TRAIN split only (validation remains untouched).
-  # For Southern Hemisphere: winter = JJA (6,7,8), summer = DJF (12,1,2).
-  # To train on all data except summer:
-  # train_omit_seasons: "summer"
-  # To train on all data except winter:
-  # train_omit_seasons: "winter"
-  # Or omit explicit months (1..12):
-  # train_omit_months: "6 7 8"
 
 model: "unet"
 
@@ -58,14 +49,11 @@ training:
   early_stopping_patience: 10
   early_stopping_min_delta: 0.001
   early_stopping_start_from_epoch: 30
-  use_attention: false
-  pickup: false
   use_ema: true
   ema_momentum: 0.99
 
 normalisation:
   local_norm: true
-  global_norm: false
   # adjust if you want to supply your own
   norm_stats:
     vor:

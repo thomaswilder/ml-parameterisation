@@ -19,7 +19,6 @@ from ml_model_ai4pex.provenance import build_training_history
 class TrainingConfig:
     epochs: int = 200
     batch_size: int = 30
-    n_lags: int = 0
     # optimiser
     learning_rate: float = 0.001
     use_ema: bool = False
@@ -36,10 +35,6 @@ class TrainingConfig:
     early_stopping_patience: int = 10
     early_stopping_min_delta: float = 0.001
     early_stopping_start_from_epoch: int = 30
-    # attention
-    use_attention: bool = False
-    # training control
-    pickup: bool = False
     # model selection
     model_type: str = "cnn"
     base_filters: int = 64
@@ -53,12 +48,6 @@ class TrainingConfig:
     current_period: str = field(
         default_factory=lambda: datetime.now().strftime("%Y%m%d-%H%M%S")
     )
-
-    # runs any validation checks
-    def __post_init__(self): 
-        if self.pickup and self.model_filename is None:
-            raise ValueError("pickup=True requires model_filename to be set.")
-        #TODO add more checks
 
 def _keras_data_generator(bgen, sc):
     """
@@ -78,50 +67,8 @@ def _keras_data_generator(bgen, sc):
             # Yield the final NumPy arrays
             yield (batch_input.to_numpy(), batch_target.to_numpy())
 
-def _lagged_keras_data_generator(ds, scenario, 
-                                 sample_index, batch_size, n_lags):
-    
-    """
-    Yields (inputs, target) numpy tuples for the lagged input path.
-
-    inputs has shape (B, y_c, x_c, n_input_vars * 2) — channels grouped by
-    variable: [var0_t, var0_{t-n_lags}, var1_t, var1_{t-n_lags}, ...],
-    target has shape (B, y_c, x_c, n_target_vars), taken at t_anchor only.
-    B is batch_size.
-    """
-
-    n_full_batches = len(sample_index) // batch_size
-
-    while True:
-        for b in range(n_full_batches):
-            rows     = sample_index[b * batch_size : (b + 1) * batch_size]
-            r_idx    = rows[:, 0]
-            t_anchor = rows[:, 1]
-
-            r_da  = xr.DataArray(r_idx,             dims='sample')
-            t_cur = xr.DataArray(t_anchor,          dims='sample')
-            t_lag = xr.DataArray(t_anchor - n_lags, dims='sample')
-
-            cur_slice = ds.isel(r=r_da, t=t_cur)
-            lag_slice = ds.isel(r=r_da, t=t_lag)
-
-            input_arrays = []
-            for var in scenario.input_var:
-                input_arrays.append(cur_slice[var])
-                input_arrays.append(lag_slice[var])
-            batch_input = xr.concat(input_arrays, dim='var') \
-                            .transpose('sample', 'y_c', 'x_c', 'var')
-
-            target_arrays = [cur_slice[v] for v in scenario.target]
-            batch_target = xr.concat(target_arrays, dim='var') \
-                              .transpose('sample', 'y_c', 'x_c', 'var')
-
-            yield (batch_input.to_numpy(), batch_target.to_numpy())
-
-
 def train_model(scenario, ds_training, ds_validation,
                 training_config: TrainingConfig,
-                train_index=None, val_index=None,
                 mask=None, logger=None):
     
     """Train model with the given scenario, data, and config."""
@@ -137,42 +84,25 @@ def train_model(scenario, ds_training, ds_validation,
     x_c_size = ds_training.sizes['x_c']
 
     # Set up batch generators
-    if training_config.n_lags == 0:
-        bgen_training = xb.BatchGenerator(
-            ds_training,
-            input_dims={'y_c': y_c_size, 'x_c': x_c_size},
-            batch_dims={'sample': training_config.batch_size},
-        )
-        bgen_validation = xb.BatchGenerator(
-            ds_validation,
-            input_dims={'y_c': y_c_size, 'x_c': x_c_size},
-            batch_dims={'sample': training_config.batch_size},
-        )
+    bgen_training = xb.BatchGenerator(
+        ds_training,
+        input_dims={'y_c': y_c_size, 'x_c': x_c_size},
+        batch_dims={'sample': training_config.batch_size},
+    )
+    bgen_validation = xb.BatchGenerator(
+        ds_validation,
+        input_dims={'y_c': y_c_size, 'x_c': x_c_size},
+        batch_dims={'sample': training_config.batch_size},
+    )
 
-        train_generator = _keras_data_generator(bgen_training, scenario)
-        val_generator = _keras_data_generator(bgen_validation, scenario)
+    train_generator = _keras_data_generator(bgen_training, scenario)
+    val_generator = _keras_data_generator(bgen_validation, scenario)
 
-        validation_steps = len(ds_validation.sample) // training_config.batch_size
-        steps_per_epoch = len(ds_training.sample) // training_config.batch_size
+    validation_steps = len(ds_validation.sample) // training_config.batch_size
+    steps_per_epoch = len(ds_training.sample) // training_config.batch_size
 
-        input_shape = (y_c_size, x_c_size, len(scenario.input_var))
+    input_shape = (y_c_size, x_c_size, len(scenario.input_var))
 
-    elif training_config.n_lags > 0:
-        train_generator = _lagged_keras_data_generator(
-            ds_training, scenario, train_index, training_config.batch_size,
-            training_config.n_lags
-        )
-        val_generator = _lagged_keras_data_generator(
-            ds_validation, scenario, val_index, training_config.batch_size,
-            training_config.n_lags
-        )
-
-        validation_steps = len(val_index) // training_config.batch_size
-        steps_per_epoch = len(train_index) // training_config.batch_size
-
-        input_shape = (y_c_size, x_c_size,
-                       len(scenario.input_var) * 2)
-        
     if logger and training_config.verbose:
         logger.info(
             f"Data generators set up. Steps per epoch: {steps_per_epoch}, \
@@ -195,8 +125,6 @@ def train_model(scenario, ds_training, ds_validation,
     else:
         lr_schedule = training_config.learning_rate
 
-    #TODO add pickup option
-
     # Build the model
 
     if training_config.model_type == "unet":
@@ -204,13 +132,11 @@ def train_model(scenario, ds_training, ds_validation,
             scenario,
             input_shape,
             dropout_rate=training_config.dropout_rate,
-            use_attention=training_config.use_attention,
         )
     else:
         model = CNN(scenario, 
                     input_shape, 
                     dropout_rate=training_config.dropout_rate,
-                    use_attention=training_config.use_attention,
         )
     model(tf.keras.Input(shape=input_shape))
 
@@ -225,7 +151,6 @@ def train_model(scenario, ds_training, ds_validation,
             use_ema=training_config.use_ema,
             ema_momentum=training_config.ema_momentum,
         ),
-        # loss=cnn.MaskedMSELoss(mask=mask),
         loss=tf.keras.losses.MeanSquaredError(
             reduction='sum_over_batch_size',
             name='mean_squared_error'

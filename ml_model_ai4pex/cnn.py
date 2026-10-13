@@ -8,7 +8,6 @@ os.environ["KERAS_BACKEND"] = "tensorflow"
 import keras
 
 from ml_model_ai4pex.model_components import (
-    ChannelSpatialSE,
     ProvenanceMixin,
     ReplicationPadding2D,
     Scenario,
@@ -22,14 +21,12 @@ class CNN(ProvenanceMixin, keras.Model):
     def __init__(self, sc, 
                  input_shape, 
                  dropout_rate=0.2,
-                 use_attention=False, 
                  **kwargs
                  ):
         super().__init__(**kwargs) # inherit from keras.Model class
         self.sc = sc
         self.input_shape = input_shape #// this doesn't look it is used?
         self.dropout_rate = dropout_rate
-        self.use_attention = use_attention
 
         # //self.input_layer = ReplicationPadding2D(padding=(2, 2), input_shape=input_shape)
 
@@ -64,8 +61,6 @@ class CNN(ProvenanceMixin, keras.Model):
                 activation="relu"), 
             keras.layers.BatchNormalization()
         ]
-        if self.use_attention:
-            layers.append(ChannelSpatialSE(filters))
         if use_dropout:
             # layers.append(keras.layers.Dropout(self.dropout_rate))
             layers.append(keras.layers.SpatialDropout2D(self.dropout_rate))
@@ -86,7 +81,6 @@ class CNN(ProvenanceMixin, keras.Model):
             'sc': self.sc,
             'input_shape': self.input_shape,
             'dropout_rate': self.dropout_rate,
-            'use_attention': self.use_attention,
         })
         return config
 
@@ -100,11 +94,17 @@ class CNN(ProvenanceMixin, keras.Model):
         sc = Scenario.from_config(sc_config) # reconstruct Scenario object
         input_shape = config.pop('input_shape')
         dropout_rate = config.pop('dropout_rate', 0.2)
-        use_attention = config.pop('use_attention', False)
+        # models saved while the squeeze-excitation option existed carry
+        # `use_attention` in their config: false is dropped, true cannot be rebuilt
+        if config.pop('use_attention', False):
+            raise ValueError(
+                "This model was saved with use_attention=True. The "
+                "squeeze-excitation layers it needs were removed from "
+                "ml_model_ai4pex, so it can no longer be rebuilt."
+            )
         return cls(sc, 
                    input_shape, 
                    dropout_rate=dropout_rate, 
-                   use_attention=use_attention, 
                    **config
         )
 

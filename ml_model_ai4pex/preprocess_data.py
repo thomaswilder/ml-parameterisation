@@ -49,8 +49,6 @@ def open_and_process_data(scenario,
         Opens and preprocesses the data by feeding in directory and filenames
             into the preprocessing step.
             n.b. this only provides local normalization related to each sub domain.
-                use open_and_combine_data then feed in datasets for global 
-                normalization.
     '''
     ds = {}
 
@@ -104,71 +102,6 @@ def open_and_process_data(scenario,
         ds_combined = ds_combined.drop_dims('z_c')
 
     return ds_combined, sc_transformed
-
-
-def open_and_combine_data(scenario, directory, filenames, mask_fn, domain):
-    '''
-        Opens and combines the data to input directly as an xarray dataset into the
-            preprocessing step.
-    '''
-    ds = {}
-    mask = {}
-
-    # sc = copy.deepcopy(scenario) # make a copy
-    # # print(sc)
-
-    for region in domain: 
-
-        directory_region = directory.format(domain=region)
-        print(directory_region)
-        fnames_region = [f.format(domain=region) for f in filenames]
-        print(fnames_region)
-        mask_fn_region = mask_fn.format(domain=region)
-        print(mask_fn_region)
-
-        ds_tmp = xr.Dataset()
-        for filename in fnames_region:
-            tmp = xr.open_dataset(directory_region + filename)
-            ds_tmp = xr.merge([ds_tmp, tmp])
-        ds[region] = ds_tmp
-        mask[region] = xr.open_dataset(directory_region + mask_fn_region)
-
-    dom_slice_dict = {
-        'dDP': (slice(2, 37), slice(15, 50)),
-        'uDP': (slice(2, 37), slice(10, 45)),
-        'SP': (slice(2, 37), slice(15, 50)),
-        'IO': (slice(2, 37), slice(15, 50)),
-        'SO_JET': (slice(3, 43), slice(7, 47)),
-        'SO_EAST': (slice(10, 50), slice(10, 50)),
-        }
-    
-    for region in domain:
-        ds_region = add_dimension_and_slice(ds[region],
-                                    dom_slice_dict[region][0],
-                                    dom_slice_dict[region][1],
-                                  )
-
-        mask_region = add_dimension_and_slice(mask[region],
-                                    dom_slice_dict[region][0],
-                                    dom_slice_dict[region][1],
-                                  )
-
-        ds[region] = ds_region
-        mask[region] = mask_region
-
-        # #! a hack to drop coords that prevent concat.
-        # coords_to_drop = ['z_c', 'gdept_1d', 'gdept_0', 'nav_lev',]
-        # for coords in coords_to_drop:
-        #     if coords in ds[region].coords:
-        #         ds[region] = ds[region].reset_coords(coords, drop=True)
-
-    dataset_list = [ds[region] for region in domain]
-    mask_list = [mask[region] for region in domain]
-    
-    ds_combined = xr.concat(dataset_list, dim='r')
-    mask_combined = xr.concat(mask_list, dim='r')
-
-    return ds_combined, mask_combined, scenario
 
 #--------------------------------------------------------
 
@@ -258,7 +191,7 @@ class data_preparation:
     def transform_input(self):
         for variable in self.sc.input_var:
             # if variable=="coarse_ke_f" or variable=="slope":
-            if variable == 'coarse_ke' or variable == 'coarse_ke_shift' or variable == 'fine_ke_shift':
+            if variable == 'coarse_ke':
                 values = self.ds[variable].compute()
                 # zero or negative values have no log: treat them as missing, so
                 # they become NaN (never -inf) and are filled with 0 below
@@ -345,17 +278,6 @@ class data_preparation:
                 )
                 self.ds[variable + "_log"] = self.ds[variable + "_log"].fillna(0) 
                 self.sc.target = [variable + "_log"]
-            # apply a asinh transform to eke tendency
-            if variable == 'eke_tendency':
-                asinh_scale = 1e-5
-                self.ds[variable + "_asinh"] = xr.apply_ufunc(
-                    np.arcsinh, (self.ds[variable] / asinh_scale).compute(),
-                    input_core_dims=[['t', 'y_c', 'x_c']],
-                    output_core_dims=[['t', 'y_c', 'x_c']],
-                )
-                self.ds[variable + "_asinh"] = self.ds[variable + "_asinh"].fillna(0) 
-                self.sc.target = [variable + "_asinh"]
-                self.ds[variable + "_asinh"] = self.ds[variable + "_asinh"].assign_attrs({"asinh_scale": asinh_scale})
 
     def mask_data(self):
         for variable in self.sc.input_var + self.sc.target:

@@ -8,7 +8,6 @@ os.environ["KERAS_BACKEND"] = "tensorflow"
 
 import keras
 from ml_model_ai4pex.model_components import (
-    ChannelSpatialSE, 
     ProvenanceMixin,
     ReplicationPadding2D, 
     Scenario
@@ -33,16 +32,14 @@ class UNet(ProvenanceMixin, keras.Model):
             1x1 Conv -> n_targets
     '''
     def __init__(self, sc, input_shape,
-                 dropout_rate=0.2, use_attention=False, **kwargs):
+                 dropout_rate=0.2, **kwargs):
         super().__init__(**kwargs)
         self.sc = sc
         self._input_shape = input_shape
         self.dropout_rate = dropout_rate
-        self.use_attention = use_attention
 
         # --- Encoder ---
         self.encoder_blocks = []
-        self.encoder_se = []
         self.pool_layers = []
         for i in range(sc.depth):
             filters = sc.base_filters * (2 ** i)
@@ -50,8 +47,6 @@ class UNet(ProvenanceMixin, keras.Model):
                 filters, use_dropout=(i < 2)
             )
             self.encoder_blocks.append(block)
-            if use_attention:
-                self.encoder_se.append(ChannelSpatialSE(filters))
             self.pool_layers.append(keras.layers.MaxPool2D(pool_size=(2, 2)))
 
         # --- Bottleneck ---
@@ -61,7 +56,6 @@ class UNet(ProvenanceMixin, keras.Model):
         # --- Decoder ---
         self.upsample_layers = []
         self.decoder_blocks = []
-        self.decoder_se = []
         for i in reversed(range(sc.depth)):
             filters = sc.base_filters * (2 ** i)
             self.upsample_layers.append(
@@ -70,8 +64,6 @@ class UNet(ProvenanceMixin, keras.Model):
             self.decoder_blocks.append(
                 self._make_conv_block(filters)
             )
-            if use_attention:
-                self.decoder_se.append(ChannelSpatialSE(filters))
 
         # --- Output ---
         n_targets = len(sc.target)
@@ -121,8 +113,6 @@ class UNet(ProvenanceMixin, keras.Model):
         
         for i, (block, pool) in enumerate(zip(self.encoder_blocks, self.pool_layers)):
             x = block(x, training=training)
-            if self.use_attention:
-                x = self.encoder_se[i](x)
             # print(f"Conv shape: {x.shape}")
             skips.append(x)          # save for skip connection
             x = pool(x)
@@ -143,8 +133,6 @@ class UNet(ProvenanceMixin, keras.Model):
             x = keras.layers.Concatenate()([x, skip])
             # print(f"Concat shape: {x.shape}")
             x = block(x, training=training)
-            if self.use_attention:
-                x = self.decoder_se[i](x)
             # print(f"Decoder Conv shape: {x.shape}")
 
         # --- Output ---
@@ -158,7 +146,6 @@ class UNet(ProvenanceMixin, keras.Model):
             'sc': self.sc,
             'input_shape': self._input_shape,
             'dropout_rate': self.dropout_rate,
-            'use_attention': self.use_attention,
         })
         return config
 
@@ -169,4 +156,12 @@ class UNet(ProvenanceMixin, keras.Model):
             sc_config = sc_config['config']
         sc = Scenario.from_config(sc_config)
         input_shape = config.pop('input_shape')
+        # models saved while the squeeze-excitation option existed carry
+        # `use_attention` in their config: false is dropped, true cannot be rebuilt
+        if config.pop('use_attention', False):
+            raise ValueError(
+                "This model was saved with use_attention=True. The "
+                "squeeze-excitation layers it needs were removed from "
+                "ml_model_ai4pex, so it can no longer be rebuilt."
+            )
         return cls(sc, input_shape, **config)

@@ -6,8 +6,7 @@ Build the provenance record stored inside saved .keras models
 Record layout:
     run_id            timestamp of the run (used in the default model filename)
     run_settings      resolved args after CLI overrides (data paths left out)
-    data_split        split ratios, shuffle seed, stride, omitted months,
-                      sample counts
+    data_split        split ratios, shuffle seed, stride, sample counts
     normalisation     mean/std applied to each input variable
     code_version      git commit hash
     environment       package versions, host, SLURM job, GPUs
@@ -25,8 +24,6 @@ import numpy as np
 import xarray as xr
 import keras
 import tensorflow as tf
-
-from ml_model_ai4pex.model_setup import _get_omit_months_from_args
 
 # args pointing at the input data; left out of the record
 _EXCLUDED_ARGS = ("data_dir", "data_filenames")
@@ -145,7 +142,6 @@ def build_provenance(args, ds, sc, run_id, n_train_samples, n_val_samples,
             "test_ratio": args.test_ratio,
             "train_stride": args.train_stride,
             "shuffle_seed": args.shuffle_seed,
-            "train_omit_months": _get_omit_months_from_args(args),
             "n_train_samples": n_train_samples,
             "n_val_samples": n_val_samples,
         },

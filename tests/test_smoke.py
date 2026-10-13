@@ -30,7 +30,7 @@ def _null_logger():
     return logger
 
 
-def _unet_args(season=False):
+def _unet_args():
     return argparse.Namespace(
         model="unet",
         features=["vor", "coarse_ke", "sa"],
@@ -41,12 +41,10 @@ def _unet_args(season=False):
         train=True,
         predict=False,
         train_ratio=0.7,
-        train_omit_seasons="summer" if season else None,
         val_ratio=0.15,
         test_ratio=0.15,
         train_stride=1,
         shuffle_seed=42,
-        n_lags=0,
         # CNN-specific (unused)
         filters=None, kernels=None, padding=None, dilation_rates=None,
     )
@@ -94,30 +92,6 @@ def _synthetic_dataset(n_r=2, n_t=20, n_y=16, n_x=16):
         },
     )
 
-def _synthetic_dataset_with_cftime(n_r=1, n_t=100, n_y=5, n_x=5):
-    """Build a minimal xarray Dataset with cftime coordinates."""
-    import cftime
-    from datetime import timedelta
-    rng = np.random.default_rng(0)
-    dims = ("r", "t", "y_c", "x_c")
-    shape = (n_r, n_t, n_y, n_x)
-    time_coords = [cftime.Datetime360Day(1999, 12, 1) + 
-                   timedelta(days=i) for i in range(n_t)]
-    return xr.Dataset(
-        {
-            "vor":       (dims, rng.standard_normal(shape).astype(np.float32)),
-            "coarse_ke": (dims, np.abs(rng.standard_normal(shape)).astype(np.float32)),
-            "sa":        (dims, rng.standard_normal(shape).astype(np.float32)),
-            "fine_ke":   (dims, np.abs(rng.standard_normal(shape)).astype(np.float32)),
-        },
-        coords={
-            "r":   np.arange(n_r),
-            "t":   time_coords,
-            "y_c": np.arange(n_y),
-            "x_c": np.arange(n_x),
-        },
-    )
-
 
 # ── individual tests ─────────────────────────────────────────────────────────────
 
@@ -125,29 +99,6 @@ def test_import():
     """Package can be imported."""
     import ml_model_ai4pex 
     print("  [PASS] import ml_model_ai4pex")
-
-def test_get_data_season():
-    """get_data correctly omits specified seasons from the training set."""
-    from ml_model_ai4pex.model_setup import _compute_norm_time_indices,_get_t_months
-
-    args = _unet_args(season=True)
-    # sc = setup_scenario(args, _null_logger())
-    ds = _synthetic_dataset_with_cftime(n_r=1, n_t=100, n_y=5, n_x=5)
-
-    nt = int(ds.sizes["t"])
-    if args.train_omit_seasons:
-            t_months = np.asarray(_get_t_months(ds))
-
-    #TODO complete test.
-
-    assert t_months is not None, "Expected t_months to be computed for seasonal omission"
-
-    # ds_train, _ = get_data(ds, sc, args, _null_logger())
-
-    # # Check that all training samples are from summer months (i.e., not DJF)
-    # t_coords = ds_train.coords["t"].values
-    # months = np.array([t.month for t in t_coords])
-    # assert not np.any(np.isin(months, [12, 1, 2]))
 
 def test_data_split():
     """get_data_split returns stacked train/val datasets with the expected sizes."""
@@ -217,7 +168,7 @@ def test_unet_forward_pass():
     sc = setup_scenario(args, _null_logger())
     H, W, C = 16, 16, len(args.features)
 
-    model = UNet(sc, input_shape=(H, W, C), dropout_rate=0.0, use_attention=False)
+    model = UNet(sc, input_shape=(H, W, C), dropout_rate=0.0)
     x = tf.zeros((2, H, W, C))
     y = model(x, training=False)
 
@@ -235,7 +186,7 @@ def test_cnn_forward_pass():
     sc = setup_scenario(args, _null_logger())
     H, W, C = 16, 16, len(args.features)
 
-    model = CNN(sc, input_shape=(H, W, C), dropout_rate=0.0, use_attention=False)
+    model = CNN(sc, input_shape=(H, W, C), dropout_rate=0.0)
     x = tf.zeros((2, H, W, C))
     y = model(x, training=False)
 
@@ -251,7 +202,6 @@ def test_cnn_forward_pass():
 
 TESTS = [
     test_import,
-    test_get_data_season,
     test_scenario_unet,
     test_scenario_cnn,
     test_data_split,

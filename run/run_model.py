@@ -8,7 +8,7 @@
 
 
 from ml_model_ai4pex.parsing_args import parse_args
-from ml_model_ai4pex.model_setup import build_lag_sample_index, setup_scenario, \
+from ml_model_ai4pex.model_setup import setup_scenario, \
       get_data, get_data_split, \
       get_data_shuffle
 from ml_model_ai4pex.train_model import TrainingConfig, train_model
@@ -41,8 +41,6 @@ if __name__ == "__main__":
     )
 
     logger.info("Starting the routine ...")
-    if args.preprocess:
-        logger.warning("Preprocessing mode selected. No training will be performed.")
 
     # GPU Configuration
     gpus = tf.config.list_physical_devices('GPU')
@@ -66,30 +64,20 @@ if __name__ == "__main__":
     #! only using local normalisation for now
     ds, sc = get_data(scenario, args, logger)
 
-    if args.preprocess:
-        logger.info("Preprocessing finished. See mean and std in logged dataset.")
-
     if args.train:
 
         # get the data splits for training, validation, and testing
         ds_train, ds_val = get_data_split(ds, args, logger)
 
         # shuffle the training data
-        if args.n_lags == 0:
-            ds_train_shuffled = get_data_shuffle(ds_train, args, logger)
+        ds_train_shuffled = get_data_shuffle(ds_train, args, logger)
 
-        if args.n_lags > 0:
-            train_index = build_lag_sample_index(ds_train, args, logger)
-            val_index   = build_lag_sample_index(ds_val,   args, logger)
-
-        if args.n_lags == 0:
-            print("ds_train_shuffled: ", ds_train_shuffled)
+        print("ds_train_shuffled: ", ds_train_shuffled)
 
         # configure training options
         training_config = TrainingConfig(
             epochs=args.epochs,
             batch_size=args.batch_size,
-            n_lags=args.n_lags,
             learning_rate=args.learning_rate,
             dropout_rate=args.dropout_rate,
             use_learning_rate_scheduler=args.use_learning_rate_scheduler,
@@ -102,8 +90,6 @@ if __name__ == "__main__":
             early_stopping_start_from_epoch=args.early_stopping_start_from_epoch,
             use_ema=args.use_ema,
             ema_momentum=args.ema_momentum,
-            use_attention=args.use_attention,
-            pickup=args.pickup,
             model_type=args.model,
             model_dir=args.model_dir,
             model_filename=args.model_filename,
@@ -113,31 +99,16 @@ if __name__ == "__main__":
         )
 
         # train the model
-        if args.n_lags == 0:
-            model = train_model(
-                sc, 
-                ds_train_shuffled, 
-                ds_val, 
-                training_config, 
-                logger=logger
-            )
-        elif args.n_lags > 0:
-            model = train_model(
-                sc, 
-                ds_train, 
-                ds_val, 
-                training_config, 
-                train_index=train_index,
-                val_index=val_index,
-                logger=logger
-            )
+        model = train_model(
+            sc, 
+            ds_train_shuffled, 
+            ds_val, 
+            training_config, 
+            logger=logger
+        )
 
-        if args.n_lags == 0:
-            n_train_samples = ds_train_shuffled.sizes['sample']
-            n_val_samples = ds_val.sizes['sample']
-        elif args.n_lags > 0:
-            n_train_samples = len(train_index)
-            n_val_samples = len(val_index)
+        n_train_samples = ds_train_shuffled.sizes['sample']
+        n_val_samples = ds_val.sizes['sample']
 
         # training record, saved inside the .keras file (assets/provenance.json)
         model.provenance = build_provenance(

@@ -46,29 +46,6 @@ def parse_args(argv=None):
     parser.add_argument("--train_stride", type=int, default=None, help="Stride to use when sampling the training data.")
     parser.add_argument("--shuffle_seed", type=int, default=None, help="Random seed for shuffling the data. Omit for no shuffling.")
 
-    # time dependency training
-    parser.add_argument("--n_lags", type=int, default=None, help="Number of lagged time steps to include as features. 0 = no lagged features, N = current + 5N past timesteps.")
-
-    # Seasonal omission for training only (validation stays untouched)
-    parser.add_argument(
-        "--train_omit_seasons",
-        type=split1,
-        default=None,
-        help="Space-separated seasons to omit from the training split only (e.g. 'winter' or 'summer winter').",
-    )
-    parser.add_argument(
-        "--train_omit_months",
-        type=list1,
-        default=None,
-        help="Space-separated month numbers (1-12) to omit from the training split only.",
-    )
-    parser.add_argument(
-        "--season_hemisphere",
-        type=str,
-        default="southern",
-        help="Hemisphere used when converting seasons to months. Use 'southern' (default) or 'northern'.",
-    )
-
     # choice of model architecture
     parser.add_argument("--model", type=str, default=None, help="Model architecture to use (e.g. 'unet' or 'cnn').")
 
@@ -90,7 +67,6 @@ def parse_args(argv=None):
     parser.add_argument("--target", type=list2, help="Target.")
     parser.add_argument("--epochs", type=int, default=None, help="Number of epochs to train the model.")
     parser.add_argument("--batch_size", type=int, default=None, help="Batch size for training.")
-    parser.add_argument("--k_folds", type=int, default=1, help="Number of folds for k-fold cross validation (1 = no CV).")  
     parser.add_argument("--learning_rate", type=float, default=0.001, help="Learning rate for the optimizer. \
                         If --use_learning_rate_scheduler is set, this is the initial learning rate.")
     parser.add_argument("--use_learning_rate_scheduler", default=None, \
@@ -107,21 +83,16 @@ def parse_args(argv=None):
     parser.add_argument("--early_stopping_min_delta", type=float, default=None, help="Minimum change in the monitored metric to qualify as an improvement.")
     parser.add_argument("--early_stopping_monitor", type=str, default=None, help="Metric to monitor for early stopping (e.g. 'val_loss').")
     parser.add_argument("--early_stopping_start_from_epoch", type=int, default=None, help="Epoch number to start monitoring for early stopping. This allows the model some time to start learning before early stopping can kick in.")
-    parser.add_argument("--use_attention", default=None, help="Flag to indicate whether to use a squeeze-excitation attention block.")
 
     # key flags associated with training, evaluation, prediction
     parser.add_argument("--train", default=None, help="Flag to indicate whether to train the model.")
     # parser.add_argument("--evaluate", action="store_true", help="Flag to indicate whether to evaluate the model.")
     parser.add_argument("--predict", default=None, help="Flag to indicate whether to predict using the model.")
-    parser.add_argument("--preprocess", default=None, help="Flag to indicate whether to preprocess the data. If set, the script will only run the data preprocessing steps and then exit.")
 
 
-    #TODO pickup will not work when using learning rate scheduler. Adapt this. ?
-    parser.add_argument("--pickup", default=None, help="Flag to indicate whether to pick up training.")
     parser.add_argument("--verbose", default=None, help="Verbose output during training.")
     parser.add_argument("--local_norm", default=None, help="Normalize training data within local domain.")
-    parser.add_argument("--global_norm", default=None, help="Normalize training data over all domains.")
-    
+
     # logging and monitoring
     # # parser.add_argument("--tensboard_log_dir", type=str, default=None, help="Directory to save TensorBoard logs.")
     parser.add_argument("--tensboard_log_dir", type=str, default=None, help="Name of the TensorBoard log directory.")
@@ -145,8 +116,6 @@ def parse_args(argv=None):
             cfg_nested["train"] = True
         elif mode == "predict":
             cfg_nested["predict"] = True
-        elif mode == "preprocess":
-            cfg_nested["preprocess"] = True
         else:
             raise ValueError(f"No other modes supported yet: {mode}")
         
@@ -231,7 +200,7 @@ def parse_args(argv=None):
     if missing_args:
         parser.error(f"Missing required arguments: {', '.join(missing_args)}")
 
-    if args.local_norm is None and args.global_norm is None:
-        parser.error("Must specify either local_norm or global_norm.")
+    if args.local_norm is None:
+        parser.error("Must specify local_norm.")
 
     return args

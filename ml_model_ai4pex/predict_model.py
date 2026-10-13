@@ -51,45 +51,19 @@ def predict_model(scenario, ds_test, args, logger=None):
     n_regions = ds_test.sizes.get("r", 1)
     pred_list = []
 
-    n_lags = getattr(args, 'n_lags', 0) or 0
-
     for r_idx in range(n_regions):
         ds_region = ds_test.isel(r=r_idx)
 
         # build input / target arrays
-        if n_lags == 0:
-            batch_input = xr.merge(
-                [ds_region[x] for x in scenario.input_var]
-            ).to_array('var').transpose('t', 'y_c', 'x_c','var')
+        batch_input = xr.merge(
+            [ds_region[x] for x in scenario.input_var]
+        ).to_array('var').transpose('t', 'y_c', 'x_c','var')
 
-            batch_target = xr.merge(
-                [ds_region[x] for x in scenario.target]
-            ).to_array('var').transpose('t', 'y_c', 'x_c','var')
+        batch_target = xr.merge(
+            [ds_region[x] for x in scenario.target]
+        ).to_array('var').transpose('t', 'y_c', 'x_c','var')
 
-            time_values = ds_region.t.values
-        else:
-            # Lagged path: drop first n_lags timesteps (no lag history).
-            n_t = ds_region.sizes['t']
-            t_anchor = np.arange(n_lags, n_t)
-            t_cur = xr.DataArray(t_anchor, dims='sample')
-            t_lag = xr.DataArray(t_anchor - n_lags, dims='sample')
-
-            cur_slice = ds_region.isel(t=t_cur)
-            lag_slice = ds_region.isel(t=t_lag)
-
-            # Group-by-variable channels: [var0_t, var0_{t-n_lags}, var1_t, ...]
-            input_arrays = []
-            for var in scenario.input_var:
-                input_arrays.append(cur_slice[var])
-                input_arrays.append(lag_slice[var])
-            batch_input = xr.concat(input_arrays, dim='var') \
-                            .transpose('sample', 'y_c', 'x_c', 'var')
-
-            target_arrays = [cur_slice[v] for v in scenario.target]
-            batch_target = xr.concat(target_arrays, dim='var') \
-                              .transpose('sample', 'y_c', 'x_c', 'var')
-
-            time_values = ds_region.t.values[n_lags:]
+        time_values = ds_region.t.values
 
         prediction = model.predict(batch_input.to_numpy())
 
