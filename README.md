@@ -168,7 +168,7 @@ An example SLURM submission script is provided at `run/submit_model.sh`. Edit th
 
 ## Running example notebook
 
-A sample testing dataset and simple pre-trained keras model are found in directories `examples/sample_*`.
+A sample test dataset and a pre-trained keras model are found in directories `examples/sample_*`. The dataset is ten days (0072-02-12 to 0072-02-21) of the `SO_JET` region, with the eddy kinetic energy of the `Lmin3LdO25` filter scale (the smaller of the spatial means of $3L_d$ and of the 1/4° grid spacing). The model is one of the released U-Nets (run `20260928-145859`): trained on all four regions with all three input features, `coarse_ke`, `vor` and `sa`. The ten days lie in the part of the run's data held back for testing.
 
 You can run this notebook yourself by installing `ml_model_ai4pex` and installing the following pip packages: `matplotlib`, `cmocean`, `scikit-image` and `scikit-learn`, plus Jupyter (`notebook`). The notebook reads the sample files by relative path, so start it from the `examples/` directory.
 
@@ -197,7 +197,9 @@ A model trained with `run/run_model.py` carries a record of its training run ins
 unzip -p model.keras assets/provenance.json
 ```
 
-A model saved before this record existed, such as the sample model in `examples/`, loads with `model.provenance` equal to `None`.
+A model saved before this record existed loads with `model.provenance` equal to `None`.
+
+The sample model in `examples/` carries its record, with three fields removed from it before it was added to this repository: `run_settings.model_dir`, `environment.hostname` and `environment.slurm_job_id`. Nothing else in the file was changed. Its `code_version.git_commit` is a commit of the repository the code was developed in before it became this package, so it is not in this repository's history.
 
 The commit in the record is that of the git repository holding the installed package files. It is the commit of this code when the package is installed in editable mode (`pip install -e .`) from a clone.
 
