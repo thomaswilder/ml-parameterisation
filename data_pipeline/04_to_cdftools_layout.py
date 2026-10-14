@@ -12,7 +12,6 @@ import xarray as xr
 import numpy as np
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-import glob
 import os
 import argparse
 import yaml
@@ -159,17 +158,24 @@ while current_date_init < end_date_init:
 
     print(date_init)
 
+    # the month's last day: the model has a 360-day calendar, so every month ends on
+    # day 30, and every monthly file is named MINT_1d_<first day>_<last day>_...
+    date_end = f"{date_init[:6]}30"
+
     # Assign current date to next date for next loop
     current_date_init = next_date_init
 
     # set nemo and coarse-grained filenames using dates
-    nemo_pattern = f'MINT_1d_{date_init}_*_{variable_T}_{region}.nc'
-    thetao_pattern = f'MINT_1d_{date_init}_*_{variable_name_T}_cg_{region}.nc'
-    so_pattern = f'MINT_1d_{date_init}_*_{variable_name_S}_cg_{region}.nc'
+    nemo_pattern = f'MINT_1d_{date_init}_{date_end}_{variable_T}_{region}.nc'
+    thetao_pattern = f'MINT_1d_{date_init}_{date_end}_{variable_name_T}_cg_{region}.nc'
+    so_pattern = f'MINT_1d_{date_init}_{date_end}_{variable_name_S}_cg_{region}.nc'
 
-    nemo_paths = glob.glob(nemo_directory + nemo_pattern)
-    thetao_paths = glob.glob(coarse_directory + thetao_pattern)
-    so_paths = glob.glob(coarse_directory + so_pattern)
+    # each file is found by its full name, never by a pattern (a pattern such as
+    # MINT_1d_00610101_*_Ld_cg also matches the full-period time mean); a list that
+    # is empty when the file is missing, as glob gave
+    nemo_paths = [p for p in [nemo_directory + nemo_pattern] if os.path.isfile(p)]
+    thetao_paths = [p for p in [coarse_directory + thetao_pattern] if os.path.isfile(p)]
+    so_paths = [p for p in [coarse_directory + so_pattern] if os.path.isfile(p)]
 
     print(f'NEMO template: {nemo_paths}')
     print(f'Coarse T: {thetao_paths}')
@@ -198,10 +204,6 @@ while current_date_init < end_date_init:
     logger.info('Reformatted datasets for date %s', date_init)
     logger.info('T formatted dims: %s', dict(ds_T_fmt.sizes))
     logger.info('S formatted dims: %s', dict(ds_S_fmt.sizes))
-
-    # extract date_end from nemo filename
-    filename = nemo_paths[0].split('/')[-1]
-    date_end = filename.split('_')[3]
 
     # save to netcdf
     output_T = f'MINT_1d_{date_init}_{date_end}_{variable_name_T}_cg_{region}_cdftools.nc'

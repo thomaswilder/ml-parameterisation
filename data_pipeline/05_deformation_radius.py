@@ -12,7 +12,6 @@ from xnemogcm import open_domain_cfg
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import numpy as np
-import glob
 import argparse
 import yaml
 
@@ -88,18 +87,25 @@ while current_date_init < end_date_init:
 
     print(date_init)
 
+    # the month's last day: the model has a 360-day calendar, so every month ends on
+    # day 30, and every monthly file is named MINT_1d_<first day>_<last day>_...
+    date_end = f"{date_init[:6]}30"
+
     # Assign current date to next date for next loop
     current_date_init = next_date_init
 
     # set nemo filename using dates
     #! changes to nemo filename
     if mode == 'cg':
-        nemo_files = [f'MINT_1d_{date_init}_*_bn2_cg_{region}.nc']
+        nemo_files = [f'MINT_1d_{date_init}_{date_end}_bn2_cg_{region}.nc']
     else:
-        nemo_files = [f'MINT_1d_{date_init}_*_bn2_{region}.nc']
+        nemo_files = [f'MINT_1d_{date_init}_{date_end}_bn2_{region}.nc']
 
     # get path
-    nemo_paths = [glob.glob(directory + f) for f in nemo_files]
+    # each file is found by its full name, never by a pattern (a pattern such as
+    # MINT_1d_00610101_*_Ld_cg also matches the full-period time mean); one list of
+    # one path per file, the shape glob gave
+    nemo_paths = [[directory + f] for f in nemo_files]
     print(nemo_paths)
 
     # open dataset
@@ -142,10 +148,6 @@ while current_date_init < end_date_init:
                               -> ocean T grid variables",
         },
     )
-
-    # extract date_end from nemo_paths
-    filename = nemo_paths[0][0].split('/')[-1]
-    date_end = filename.split('_')[3]
 
     # save data to netcdf
     if mode == 'cg':

@@ -4,11 +4,8 @@
     Description: Calculates relative vorticity
     
     Method: Uses geostrophic velocity
-
-    #TODO Check why vorticity ends up with incorrect pandas index
 '''
 
-import glob
 import argparse
 import yaml
 import xarray as xr
@@ -80,19 +77,26 @@ while current_date_init < end_date_init:
 
     print(date_init)
 
+    # the month's last day: the model has a 360-day calendar, so every month ends on
+    # day 30, and every monthly file is named MINT_1d_<first day>_<last day>_...
+    date_end = f"{date_init[:6]}30"
+
     # Assign current date to next date for next loop
     current_date_init = next_date_init
 
     # set nemo filename using dates
     if mode == 'geostrophic':
-        nemo_files = [f'MINT_1d_{date_init}_*_ug_cg_{region}.nc',
-                      f'MINT_1d_{date_init}_*_vg_cg_{region}.nc']
+        nemo_files = [f'MINT_1d_{date_init}_{date_end}_ug_cg_{region}.nc',
+                      f'MINT_1d_{date_init}_{date_end}_vg_cg_{region}.nc']
     else:
-        nemo_files = [f'MINT_1d_{date_init}_*_uo_cg_{region}.nc',
-                      f'MINT_1d_{date_init}_*_vo_cg_{region}.nc']
+        nemo_files = [f'MINT_1d_{date_init}_{date_end}_uo_cg_{region}.nc',
+                      f'MINT_1d_{date_init}_{date_end}_vo_cg_{region}.nc']
     print(nemo_files)
 
-    nemo_paths = [glob.glob(directory + f) for f in nemo_files]
+    # each file is found by its full name, never by a pattern (a pattern such as
+    # MINT_1d_00610101_*_Ld_cg also matches the full-period time mean); one list of
+    # one path per file, the shape glob gave
+    nemo_paths = [[directory + f] for f in nemo_files]
 
     nemo_files = [nemo_paths[0][0].split('/')[-1], nemo_paths[1][0].split('/')[-1]]
 
@@ -138,8 +142,12 @@ while current_date_init < end_date_init:
                         zeta_c.values),
         },
         coords={
-            "t": (["t"], zeta_c.t.values,
-                        zeta_c.t.attrs),
+            # the time axis of the velocities, with their attributes and encoding.
+            # Not zeta_c.t: xgcm's diff and interp pad for boundary='extend', the
+            # padding drops every coordinate, and xgcm puts back only those of the
+            # grid dataset (domcfg), which has no `t`. So zeta_c has `t` as a bare
+            # dimension, and zeta_c.t is xarray's default index 0, 1, ..., 29.
+            "t": dataU.t.variable,
             "gphit": (["y_c", "x_c"], domcfg_surface.gphit.values, 
                       {"standard_name": "Latitude", "units": "degrees_north"}),
             "glamt": (["y_c", "x_c"], domcfg_surface.glamt.values, 
@@ -153,11 +161,6 @@ while current_date_init < end_date_init:
     )
 
     logger.info('Dataset to be saved is: %s', ds_tmp)
-
-    # extract date_end from nemo_paths
-    filename = nemo_paths[0].split('/')[-1]
-    date_end = filename.split('_')[3]
-    date_end
 
     # save data to netcdf
     if mode == 'geostrophic':

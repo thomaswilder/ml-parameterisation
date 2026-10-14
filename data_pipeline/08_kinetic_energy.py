@@ -15,7 +15,6 @@
                            Only implemented for variable = 'eke' (fine_ke).
 '''
 
-import glob
 import argparse
 import yaml
 import gcm_filters
@@ -191,29 +190,32 @@ while current_date_init < end_date_init:
 
     print(date_init)
 
+    # the month's last day: the model has a 360-day calendar, so every month ends on
+    # day 30, and every monthly file is named MINT_1d_<first day>_<last day>_...
+    date_end = f"{date_init[:6]}30"
+
     # Assign current date to next date for next loop
     current_date_init = next_date_init
 
     # set nemo filename using dates
     if mode == 'geostrophic':
-        nemo_files = [f'MINT_1d_{date_init}_*_ug_{region}.nc',
-                      f'MINT_1d_{date_init}_*_vg_{region}.nc']
+        nemo_files = [f'MINT_1d_{date_init}_{date_end}_ug_{region}.nc',
+                      f'MINT_1d_{date_init}_{date_end}_vg_{region}.nc']
     else:
         if variable == 'eke' or variable == 'eke_parts':
-            nemo_files = [f'MINT_1d_{date_init}_*_grid_U_{region}.nc',
-                          f'MINT_1d_{date_init}_*_grid_V_{region}.nc']
+            nemo_files = [f'MINT_1d_{date_init}_{date_end}_grid_U_{region}.nc',
+                          f'MINT_1d_{date_init}_{date_end}_grid_V_{region}.nc']
         elif variable == 'mke' or variable == 'res_eke':
-            nemo_files = [f'MINT_1d_{date_init}_*_uo_cg_{region}.nc',
-                          f'MINT_1d_{date_init}_*_vo_cg_{region}.nc']
+            nemo_files = [f'MINT_1d_{date_init}_{date_end}_uo_cg_{region}.nc',
+                          f'MINT_1d_{date_init}_{date_end}_vo_cg_{region}.nc']
     print(nemo_files)
 
-    nemo_paths = [glob.glob(directory + f) for f in nemo_files]
+    # each file is found by its full name, never by a pattern (a pattern such as
+    # MINT_1d_00610101_*_Ld_cg also matches the full-period time mean); one list of
+    # one path per file, the shape glob gave
+    nemo_paths = [[directory + f] for f in nemo_files]
 
     logger.info('nemo_paths are: %s', nemo_paths)
-
-    # extract date_end from nemo_paths
-    filename = nemo_paths[0][0].split('/')[-1]
-    date_end = filename.split('_')[3]
 
     nemo_files = [nemo_paths[0][0].split('/')[-1], nemo_paths[1][0].split('/')[-1]]
 

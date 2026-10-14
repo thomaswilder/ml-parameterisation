@@ -17,7 +17,6 @@ import xgcm
 import numpy as np
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-import glob
 import argparse
 import yaml
 
@@ -127,23 +126,30 @@ while current_date_init < end_date_init:
 
     logger.info(f'Current date: {date_init}')
 
+    # the month's last day: the model has a 360-day calendar, so every month ends on
+    # day 30, and every monthly file is named MINT_1d_<first day>_<last day>_...
+    date_end = f"{date_init[:6]}30"
+
     # Assign current date to next date for next loop
     current_date_init = next_date_init
 
     # set nemo filename using dates
     if variable == 'grid_UV':
-        nemo_files = [f'MINT_1d_{date_init}_*_grid_U_{region}.nc',
-                      f'MINT_1d_{date_init}_*_grid_V_{region}.nc']
+        nemo_files = [f'MINT_1d_{date_init}_{date_end}_grid_U_{region}.nc',
+                      f'MINT_1d_{date_init}_{date_end}_grid_V_{region}.nc']
     elif variable == 'uvg':
-        nemo_files = [f'MINT_1d_{date_init}_*_ug_{region}.nc',
-                      f'MINT_1d_{date_init}_*_vg_{region}.nc']
+        nemo_files = [f'MINT_1d_{date_init}_{date_end}_ug_{region}.nc',
+                      f'MINT_1d_{date_init}_{date_end}_vg_{region}.nc']
     else:
-        nemo_files = [f'MINT_1d_{date_init}_*_{variable}_{region}.nc']
+        nemo_files = [f'MINT_1d_{date_init}_{date_end}_{variable}_{region}.nc']
     logger.info(f'Nemo files: {nemo_files}')
 
     # open dataset using xnemogcm
     # nemo_paths = [directory + f for f in nemo_files]
-    nemo_paths = [glob.glob(directory + f) for f in nemo_files]
+    # each file is found by its full name, never by a pattern (a pattern such as
+    # MINT_1d_00610101_*_Ld_cg also matches the full-period time mean); one list of
+    # one path per file, the shape glob gave
+    nemo_paths = [[directory + f] for f in nemo_files]
     logger.info(f'Nemo paths: {nemo_paths}')
     # ds = open_nemo_and_domain_cfg(nemo_files=nemo_paths[0],
     #                               domcfg_files=mask16_path)
@@ -380,10 +386,6 @@ while current_date_init < end_date_init:
                                 -> ocean T grid variables",
             },
         )
-
-    # extract date_end from nemo_paths
-    filename = nemo_paths[0][0].split('/')[-1]
-    date_end = filename.split('_')[3]
 
     # save data to netcdf
     save_directory = config['paths']['features'] + f'/{region}/filtered_data/'
