@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ml_model_ai4pex"
-version = "0.1.0"
+version = "1.0.0"
 description = "CNN/U-Net models for the prediction of Eddy Kinetic Energy"
 readme = "README.md"
 authors = [
@@ -19,16 +19,19 @@ dependencies = [
     "xbatcher",
     "numpy",
     "pyyaml",
-    "pytest",
-
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python"
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
 [project.urls]
-Repository = "https://github.com/tmwilder/ml_model_ai4pex"
+Repository = "https://github.com/thomaswilder/ml_model_ai4pex"
 
 [tool.setuptools.packages.find]
 where = ["."]
