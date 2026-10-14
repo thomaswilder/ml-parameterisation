@@ -7,12 +7,11 @@
         velocity (a scalar) is filtered with IRREGULAR_WITH_LAND.
         Currently in CPU mode.
 
-        The filter lengthscale is set by `filter_lengthscale`:
-          'ld'          -> spatially varying filter scale 3Ld (original method)
-          'min_3ld_o25' -> constant filter scale min(<3Ld>, <ds_O25>), where
-                           <.> is a spatial average and ds_O25 is the grid
-                           spacing of the 1/4 degree (EXP4) coarse grid.
-                           Only implemented for variable = 'eke' (fine_ke).
+        The filter lengthscale is set by `variable`:
+          'mke' -> spatially varying filter scale 3Ld (original method)
+          'eke' -> constant filter scale min(<3Ld>, <ds_O25>), where
+                   <.> is a spatial average and ds_O25 is the grid
+                   spacing of the 1/4 degree (EXP4) coarse grid.
 '''
 
 import argparse
@@ -43,16 +42,9 @@ parser.add_argument('--end', required=True,
                     help='end of the period, YYYYMMDD, exclusive (end_date_init_str)')
 parser.add_argument('--config', required=True,
                     help='paths config (see config.example.yml)')
-parser.add_argument('--mode', required=True,
-                    help="'non_geostrophic' (the geostrophic branch is dead)")
 parser.add_argument('--variable', required=True,
-                    help="'eke' (fine grid, 1/16 degree velocity) or 'mke' (coarse-grained velocity)")
-parser.add_argument('--depth', required=True,
-                    help="'non_full' (surface velocity); 'full' is a dead branch")
-parser.add_argument('--ld-scaling', type=int, default=3,
-                    help='scale the deformation radius by this factor')
-parser.add_argument('--filter-lengthscale', required=True,
-                    help="'ld' (spatially varying 3Ld, needed for mke) or 'min_3ld_o25' (eke only)")
+                    help="'eke' (fine grid, 1/16 degree velocity; filter scale min(<3Ld>, <ds_O25>)) "
+                         "or 'mke' (coarse-grained velocity; spatially varying filter scale 3Ld)")
 args = parser.parse_args()
 
 with open(args.config) as f:
@@ -60,27 +52,14 @@ with open(args.config) as f:
 
 region = args.region
 
-mode = args.mode # 'geostrophic' or 'full' velocity
-variable = args.variable # eke and eke_parts use full field, mke and res_eke use cg field
-                     # eke_parts writes the eddy velocity and its kinetic
-                     # energy on t-grid points, for coarse-graining with a
-                     # single set of conservative weights
-depth = args.depth # full depth profile or not
+variable = args.variable # eke uses full field, mke uses cg field
 
-if mode == 'geostrophic':
-    directory = config['paths']['features'] + f'/{region}/'
-    mask_path = [directory + f'mesh_mask_exp16_surface_{region}.nc']
-else:
-    if variable == 'eke' or variable == 'eke_parts':
-        if depth == 'full':
-            directory = config['paths']['subsets'] + f'/{region}/full_depth/'
-            mask_path = [config['paths']['features'] + f'/{region}/mesh_mask_exp16_{region}.nc']
-        else:
-            directory = config['paths']['subsets'] + f'/{region}/'
-            mask_path = [config['paths']['features'] + f'/{region}/mesh_mask_exp16_surface_{region}.nc']
-    elif variable == 'mke' or variable == 'res_eke':
-        directory = config['paths']['features'] + f'/{region}/coarsened_data/'
-        mask_path = [config['paths']['features'] + f'/{region}/mesh_mask_exp4_surface_{region}.nc']
+if variable == 'eke':
+    directory = config['paths']['subsets'] + f'/{region}/'
+    mask_path = [config['paths']['features'] + f'/{region}/mesh_mask_exp16_surface_{region}.nc']
+elif variable == 'mke':
+    directory = config['paths']['features'] + f'/{region}/coarsened_data/'
+    mask_path = [config['paths']['features'] + f'/{region}/mesh_mask_exp4_surface_{region}.nc']
 
 # Initial date string
 start_date_init_str = args.start
@@ -89,31 +68,23 @@ start_date_init_str = args.start
 end_date_init_str = args.end
 
 # scale deformation radius
-ld_scaling = args.ld_scaling
-
-# filter lengthscale: 'ld' for the spatially varying 3Ld filter, or
-# 'min_3ld_o25' for the constant filter scale min(<3Ld>, <ds_O25>)
-filter_lengthscale = args.filter_lengthscale
+ld_scaling = 3
 # -------------------------------------------- #
-
-# the alternative lengthscale is only set up for eke (fine_ke) on the fine grid
-if filter_lengthscale == 'min_3ld_o25' and variable != 'eke':
-    raise ValueError("filter_lengthscale = 'min_3ld_o25' is only implemented for variable = 'eke'")
 
 # -------------------------------------------- #
 # get max deformation radius in metres
 #TODO need to time average Ld and load this in
-if variable == 'eke' or variable == 'eke_parts':
+if variable == 'eke':
     directory_ld = config['paths']['features'] + f'/{region}/'
     ld = xr.open_dataset(directory_ld + f'MINT_1d_00610101_00721230_Ld_{region}.nc')
-elif variable == 'mke' or variable == 'res_eke':
+elif variable == 'mke':
     directory_ld = config['paths']['features'] + f'/{region}/coarsened_data/'
     ld = xr.open_dataset(directory_ld + f'MINT_1d_00610101_00721230_Ld_cg_{region}.nc')
 
 # scale Ld (Ld is in km)
 ld = ld_scaling * ld.Ld
 
-if filter_lengthscale == 'ld':
+if variable == 'mke':
     # get max Ld (scaling)
     Lmax = 1000*ld.max(dim=['x_c', 'y_c'], skipna=True).values
 
@@ -124,7 +95,7 @@ if filter_lengthscale == 'ld':
     ls_tag = ''
     ls_attrs = {'filter_lengthscale': f'{ld_scaling}Ld (spatially varying)'}
 
-elif filter_lengthscale == 'min_3ld_o25':
+elif variable == 'eke':
     # spatial average of 3Ld over the region, in metres
     ld_mean = 1000*float(ld.mean(dim=['x_c', 'y_c'], skipna=True))
 
@@ -157,9 +128,6 @@ elif filter_lengthscale == 'min_3ld_o25':
         'mean_ds_O25_m': dels_o25_mean,
     }
 
-else:
-    raise ValueError(f'Unknown filter_lengthscale: {filter_lengthscale}')
-
 # viscosities for the vector filter: isotropic contribution set by the
 # filter lengthscale (on t-grid points)
 kappa_iso = kappa
@@ -181,7 +149,6 @@ while current_date_init < end_date_init:
     print(next_date_init)
 
     # Convert dates to string for nemo files
-    # date = current_date.strftime("%Y%m%d")
     date_init = (
         f"{current_date_init.year:04d}"\
         f"{current_date_init.month:02d}"\
@@ -198,16 +165,12 @@ while current_date_init < end_date_init:
     current_date_init = next_date_init
 
     # set nemo filename using dates
-    if mode == 'geostrophic':
-        nemo_files = [f'MINT_1d_{date_init}_{date_end}_ug_{region}.nc',
-                      f'MINT_1d_{date_init}_{date_end}_vg_{region}.nc']
-    else:
-        if variable == 'eke' or variable == 'eke_parts':
-            nemo_files = [f'MINT_1d_{date_init}_{date_end}_grid_U_{region}.nc',
-                          f'MINT_1d_{date_init}_{date_end}_grid_V_{region}.nc']
-        elif variable == 'mke' or variable == 'res_eke':
-            nemo_files = [f'MINT_1d_{date_init}_{date_end}_uo_cg_{region}.nc',
-                          f'MINT_1d_{date_init}_{date_end}_vo_cg_{region}.nc']
+    if variable == 'eke':
+        nemo_files = [f'MINT_1d_{date_init}_{date_end}_grid_U_{region}.nc',
+                      f'MINT_1d_{date_init}_{date_end}_grid_V_{region}.nc']
+    elif variable == 'mke':
+        nemo_files = [f'MINT_1d_{date_init}_{date_end}_uo_cg_{region}.nc',
+                      f'MINT_1d_{date_init}_{date_end}_vo_cg_{region}.nc']
     print(nemo_files)
 
     # each file is found by its full name, never by a pattern (a pattern such as
@@ -222,12 +185,12 @@ while current_date_init < end_date_init:
     logger.info('nemo_files is: %s', nemo_files)
 
     # open dataset using xnemogcm
-    if variable == 'eke' or variable == 'eke_parts':
+    if variable == 'eke':
         nemo_paths = [directory + f for f in nemo_files]
         ds = open_nemo_and_domain_cfg(nemo_files=nemo_paths,
                                     domcfg_files=mask_path)
         
-    elif variable == 'mke' or variable == 'res_eke':
+    elif variable == 'mke':
         domcfg = open_domain_cfg(files = mask_path)
         dataU = xr.open_dataset(nemo_paths[0][0])
         dataV = xr.open_dataset(nemo_paths[1][0])
@@ -250,12 +213,8 @@ while current_date_init < end_date_init:
     dys = ds.e2v.roll(y_f=-1, roll_coords=False)  # y-spacing centered at southern T-cell edge in m
 
     # Ensure that coordinates are the same
-    if depth == 'full':
-        wet_mask = ds.tmask
-        wet_mask_f = ds.fmask
-    else:
-        wet_mask = ds.tmask.isel(z_c=0)
-        wet_mask_f = ds.fmask.isel(z_c=0)
+    wet_mask = ds.tmask.isel(z_c=0)
+    wet_mask_f = ds.fmask.isel(z_c=0)
     dxw = dxw.swap_dims({"x_f": "x_c"})
     dyw = dyw.swap_dims({"x_f": "x_c"})
     dxs = dxs.swap_dims({"y_f": "y_c"})
@@ -320,20 +279,12 @@ while current_date_init < end_date_init:
     
     # select velocity components on their native staggered grids
     logger.info('Selecting velocity components on native grids')
-    if mode == 'geostrophic':
-        uo = ds.ug
-        vo = ds.vg
-    else:
-        if variable == 'eke' or variable == 'eke_parts':
-            if depth == 'full':
-                uo = ds.uo
-                vo = ds.vo
-            else:
-                uo = ds.uo.isel(z_c=0)
-                vo = ds.vo.isel(z_c=0)
-        elif variable == 'mke' or variable == 'res_eke':
-            uo = ds.uo
-            vo = ds.vo
+    if variable == 'eke':
+        uo = ds.uo.isel(z_c=0)
+        vo = ds.vo.isel(z_c=0)
+    elif variable == 'mke':
+        uo = ds.uo
+        vo = ds.vo
 
     # compute mean components of velocity by filtering the velocity vector
     # on its native staggered grids: swap to common (y_c, x_c) dims for
@@ -354,7 +305,7 @@ while current_date_init < end_date_init:
     voce_mean_sq_c = grid.interp(voce_mean**2, 'Y', boundary='extend').persist()
 
     # following definition of EKE by Buzzicotti et al., (2023)
-    if variable == 'eke' or variable == 'res_eke':
+    if variable == 'eke':
         # squared full velocities averaged onto t-grid points
         u_sq_c = grid.interp(uo**2, 'X', boundary='extend') \
                + grid.interp(vo**2, 'Y', boundary='extend')
@@ -367,36 +318,14 @@ while current_date_init < end_date_init:
         coarse_ke = 0.5 * ( uoce_mean_sq_c
                         + voce_mean_sq_c )
     elif variable == 'eke':
-        # coarse_ke = 0.5 * ( uoce_mean_sq_c + voce_mean_sq_c )
         fine_ke = 0.5 * ( u_sq_c_filt
                         - ( uoce_mean_sq_c + voce_mean_sq_c ) )
         fine_ke = fine_ke.where(fine_ke >= 0, 0) # clipping negative values
-    elif variable == 'res_eke':
-        # eddy energy resolved by the coarse-grained velocity field, used
-        # elsewhere to form the subgrid eke as fine_ke - res_ke
-        res_ke = 0.5 * ( u_sq_c_filt
-                        - ( uoce_mean_sq_c + voce_mean_sq_c ) )
-        res_ke = res_ke.where(res_ke >= 0, 0) # clipping negative values
-    elif variable == 'eke_parts':
-        # eddy velocity relative to the filtered mean flow, on t-grid points,
-        # together with its kinetic energy. Squaring is done here on the fine
-        # grid; coarse-graining all three with the same conservative weights
-        # then gives the subgrid eke as kp_cg - 0.5 * ( up_cg**2 + vp_cg**2 ),
-        # which is a variance of the coarse-graining operator and so is
-        # positive by construction
-        up = grid.interp(uo - uoce_mean, 'X', boundary='extend')
-        vp = grid.interp(vo - voce_mean, 'Y', boundary='extend')
-        kp = 0.5 * ( up**2 + vp**2 )
 
-    # logger.info('bare_ke is: %s', bare_ke)
     if variable == 'mke':
         logger.info('coarse_ke is: %s', coarse_ke)
     elif variable == 'eke':
         logger.info('fine_ke is: %s', fine_ke)
-    elif variable == 'res_eke':
-        logger.info('res_ke is: %s', res_ke)
-    elif variable == 'eke_parts':
-        logger.info('kp is: %s', kp)
 
     # create dataset for xnemo readable
     data_vars = {}
@@ -405,18 +334,7 @@ while current_date_init < end_date_init:
     elif variable == 'eke':
         # fine_ke keeps its name so downstream scripts (e.g. regrid_data.py)
         # can read it; the filter lengthscale used is recorded in its attrs
-        if depth == 'full':
-            data_vars['fine_ke'] = (["t", "z_c", "y_c", "x_c"], fine_ke.values, ls_attrs)
-        else:
-            data_vars['fine_ke'] = (["t", "y_c", "x_c"], fine_ke.values, ls_attrs)
-            # data_vars['u_sq_c_filt'] = (["t", "y_c", "x_c"], u_sq_c_filt.values)
-            # data_vars['coarse_ke'] = (["t", "y_c", "x_c"], coarse_ke.values)
-    elif variable == 'res_eke':
-        data_vars['res_eke'] = (["t", "y_c", "x_c"], res_ke.values)
-    elif variable == 'eke_parts':
-        data_vars['up'] = (["t", "y_c", "x_c"], up.values)
-        data_vars['vp'] = (["t", "y_c", "x_c"], vp.values)
-        data_vars['kp'] = (["t", "y_c", "x_c"], kp.values)
+        data_vars['fine_ke'] = (["t", "y_c", "x_c"], fine_ke.values, ls_attrs)
 
     ds_tmp = xr.Dataset(
         data_vars=data_vars,
@@ -432,7 +350,7 @@ while current_date_init < end_date_init:
         },
         attrs={
             "name": "NEMO dataset",
-            "description": f"Contains {variable} from {mode} component -> ocean T grid variables",
+            "description": f"Contains {variable} from non_geostrophic component -> ocean T grid variables",
             # record the filter lengthscale in the dataset metadata
             **ls_attrs,
         },
@@ -442,17 +360,11 @@ while current_date_init < end_date_init:
 
     # save to netcdf; ls_tag is empty for the 3Ld filter, and '_Lmin3LdO25'
     # for min(<3Ld>, <ds_O25>), e.g. MINT_1d_..._eke_Lmin3LdO25_SO_JET.nc
-    if mode == 'geostrophic':
-        output_file = f'MINT_1d_{date_init}_{date_end}_keg{ls_tag}_{region}.nc'
-    else:
-        if depth == 'full':
-            output_file = f'MINT_1d_{date_init}_{date_end}_{variable}{ls_tag}_full_depth_{region}.nc'
-        else:
-            output_file = f'MINT_1d_{date_init}_{date_end}_{variable}{ls_tag}_{region}.nc'
+    output_file = f'MINT_1d_{date_init}_{date_end}_{variable}{ls_tag}_{region}.nc'
 
-    if variable == 'eke' or variable == 'eke_parts':
+    if variable == 'eke':
         save_directory = config['paths']['features'] + f'/{region}/'
-    elif variable == 'mke' or variable == 'res_eke':
+    elif variable == 'mke':
         save_directory = config['paths']['features'] + f'/{region}/coarsened_data/'
     logger.info('Saving kinetic energy to: %s', save_directory + output_file)
 

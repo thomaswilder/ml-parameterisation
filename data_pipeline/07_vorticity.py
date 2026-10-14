@@ -3,7 +3,7 @@
 '''
     Description: Calculates relative vorticity
     
-    Method: Uses geostrophic velocity
+    Method: Uses the coarse-grained velocity
 '''
 
 import argparse
@@ -31,16 +31,12 @@ parser.add_argument('--end', required=True,
                     help='end of the period, YYYYMMDD, exclusive (end_date_init_str)')
 parser.add_argument('--config', required=True,
                     help='paths config (see config.example.yml)')
-parser.add_argument('--mode', required=True,
-                    help="'full' (the geostrophic branch is dead)")
 args = parser.parse_args()
 
 with open(args.config) as f:
     config = yaml.safe_load(f)
 
 region = args.region
-
-mode = args.mode # 'geostrophic' or 'full' velocity
 
 
 directory = config['paths']['features'] + f'/{region}/coarsened_data/'
@@ -68,7 +64,6 @@ while current_date_init < end_date_init:
     print(next_date_init)
 
     # Convert dates to string for nemo files
-    # date = current_date.strftime("%Y%m%d")
     date_init = (
         f"{current_date_init.year:04d}"\
         f"{current_date_init.month:02d}"\
@@ -85,12 +80,8 @@ while current_date_init < end_date_init:
     current_date_init = next_date_init
 
     # set nemo filename using dates
-    if mode == 'geostrophic':
-        nemo_files = [f'MINT_1d_{date_init}_{date_end}_ug_cg_{region}.nc',
-                      f'MINT_1d_{date_init}_{date_end}_vg_cg_{region}.nc']
-    else:
-        nemo_files = [f'MINT_1d_{date_init}_{date_end}_uo_cg_{region}.nc',
-                      f'MINT_1d_{date_init}_{date_end}_vo_cg_{region}.nc']
+    nemo_files = [f'MINT_1d_{date_init}_{date_end}_uo_cg_{region}.nc',
+                  f'MINT_1d_{date_init}_{date_end}_vo_cg_{region}.nc']
     print(nemo_files)
 
     # each file is found by its full name, never by a pattern (a pattern such as
@@ -102,8 +93,6 @@ while current_date_init < end_date_init:
 
     # open dataset using xnemogcm
     nemo_paths = [directory + f for f in nemo_files]
-    # ds = open_nemo_and_domain_cfg(nemo_files=nemo_paths,
-    #                               domcfg_files=mask_path)
     #! issues opening subsetted data with full xnemogcm, just hangs?
     #* use this workaround to open data and domcfg separately
     dataU = xr.open_dataset(nemo_paths[0])
@@ -119,16 +108,10 @@ while current_date_init < end_date_init:
     bd = {'boundary': 'extend'}
 
     # compute relative vorticity
-    if mode == 'geostrophic':
-        zeta = 1/(domcfg_surface.e1f*domcfg_surface.e2f) * \
-                (grid.diff(dataV.vg*domcfg_surface.e2v, 'X', **bd) \
-                - grid.diff(dataU.ug*domcfg_surface.e1u, 'Y', **bd)) \
-                    * domcfg_surface.fmask
-    else:
-        zeta = 1/(domcfg_surface.e1f*domcfg_surface.e2f) * \
-                (grid.diff(dataV.vo*domcfg_surface.e2v, 'X', **bd) \
-                - grid.diff(dataU.uo*domcfg_surface.e1u, 'Y', **bd)) \
-                    * domcfg_surface.fmask
+    zeta = 1/(domcfg_surface.e1f*domcfg_surface.e2f) * \
+            (grid.diff(dataV.vo*domcfg_surface.e2v, 'X', **bd) \
+            - grid.diff(dataU.uo*domcfg_surface.e1u, 'Y', **bd)) \
+                * domcfg_surface.fmask
     
     logger.info('Relative vorticity calculated is: %s', zeta)
 
@@ -156,17 +139,14 @@ while current_date_init < end_date_init:
         attrs={
             "name": "NEMO dataset",
             "description": f"Relative vorticity from coarse_grained \
-                  {mode} velocities -> ocean T grid variables",
+                  full velocities -> ocean T grid variables",
         },
     )
 
     logger.info('Dataset to be saved is: %s', ds_tmp)
 
     # save data to netcdf
-    if mode == 'geostrophic':
-        output_file = f'MINT_1d_{date_init}_{date_end}_vorg_cg_{region}.nc'
-    else:
-        output_file = f'MINT_1d_{date_init}_{date_end}_vor_cg_{region}.nc'
+    output_file = f'MINT_1d_{date_init}_{date_end}_vor_cg_{region}.nc'
 
     save_directory = config['paths']['features'] + f'/{region}/coarsened_data/'
 

@@ -66,7 +66,6 @@ while current_date_init < end_date_init:
     print(next_date_init)
 
     # Convert dates to string for nemo files
-    # date = current_date.strftime("%Y%m%d")
     date_init = (
         f"{current_date_init.year:04d}"\
         f"{current_date_init.month:02d}"\

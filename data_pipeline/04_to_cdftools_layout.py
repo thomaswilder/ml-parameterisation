@@ -34,10 +34,6 @@ parser.add_argument('--end', required=True,
                     help='end of the period, YYYYMMDD, exclusive (end_date_init_str)')
 parser.add_argument('--config', required=True,
                     help='paths config (see config.example.yml)')
-parser.add_argument('--variable-T', default='grid_T',
-                    help='NEMO file type used as the template')
-parser.add_argument('--variable-name-T', default='thetao')
-parser.add_argument('--variable-name-S', default='so')
 args = parser.parse_args()
 
 with open(args.config) as f:
@@ -48,9 +44,9 @@ region = args.region
 nemo_directory = config['paths']['subsets'] + f'/{region}/'
 coarse_directory = config['paths']['features'] + f'/{region}/coarsened_data/'
 
-variable_T = args.variable_T
-variable_name_T = args.variable_name_T
-variable_name_S = args.variable_name_S
+variable_T = 'grid_T'
+variable_name_T = 'thetao'
+variable_name_S = 'so'
 
 # ------------ helper functions ---------------- #
 
