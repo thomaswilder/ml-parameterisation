@@ -1,0 +1,45 @@
+# One environment for every Python step of the data pipeline.
+#
+# NOT TESTED. It was written from the imports of the scripts and the versions in the two
+# exports below, and was not built or run. The checks of the pipeline against the released
+# files were run in pyCDFTOOLS.yml and regrid_xesmf_cond.yml, which are the record of what
+# worked. If this file does not solve or gives different numbers, use those two.
+#
+# Lists only what the scripts in data_pipeline/ import, and what those packages need to
+# read and write the files, with the versions of the two environments the checks were
+# run with (pyCDFTOOLS.yml and regrid_xesmf_cond.yml, in this directory). conda adds the
+# rest.
+#
+# Python 3.10 is the version of the xesmf environment: xesmf and ESMF are the part that
+# is most sensitive to the Python version, and every other package here is available
+# for it. The pyCDFTOOLS environment ran on Python 3.12.
+#
+# Imports, by script (13 Python scripts):
+#   xarray, numpy, pyyaml, argparse, datetime, logging, os, sys  all or most scripts
+#   python-dateutil          02, 03, 04, 05, 05_time_mean, 06, 07, 08, 09
+#   xgcm, xnemogcm           02, 03, 05, 06, 07, 08
+#   gcm_filters              02, 08
+#   xesmf (needs esmpy)      00_filter_kappa, 00_regrid_weights, 03
+#   dask                     ds.chunk (02, 08) and open_mfdataset (05_time_mean, 09)
+#   netcdf4                  every .to_netcdf and every read
+# The shell scripts need ncks (NCO) and cdfbn2 (CDFTOOLS), which are not Python: see
+# other_tools.md.
+name: ai4pex-pipeline
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.10
+  - numpy=1.26
+  - pandas=2.1
+  - scipy=1.11
+  - xarray=2023.12.0
+  - dask-core=2023.12
+  - netcdf4=1.6.5
+  - pyyaml=6.0
+  - python-dateutil=2.8
+  - xgcm=0.8.1
+  - xnemogcm=0.4.2
+  - gcm_filters=0.5.1
+  - xesmf=0.8.2
+  - esmpy=8.4.2

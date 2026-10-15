@@ -178,6 +178,9 @@ Software, recorded in `envs/`:
 
 - `envs/pyCDFTOOLS.yml`: environment P (xarray, xgcm, xnemogcm, gcm_filters).
 - `envs/regrid_xesmf_cond.yml`: environment X (xesmf with ESMF).
+- `envs/environment.yml`: a short list of just the packages the scripts import, as one
+  environment for all steps. Not tested: if it does not solve or gives different numbers,
+  use the two above, which are the environments the checks were run in.
 - `ncks` from NCO, with a `python3` that has PyYAML, and `cdfbn2` from CDFTOOLS, with
   its namelists in `cdftools/`: see `envs/other_tools.md`.
 
