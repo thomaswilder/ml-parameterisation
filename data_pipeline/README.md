@@ -121,7 +121,7 @@ month, `MINT_1d_<first day>_<last day>`.
 | `02_filter.py` | 2, 3 | filters T and S (`grid_T`) or the surface velocity (`grid_UV`) on the fine grid | 1, A, D | `F/R/filtered_data/m_{thetao,so,uo,vo}_f_R.nc` | Python |
 | `03_regrid.py` | 4, 13 | coarse-grains a filtered field, or the fine-grid `eke`, to 1/4 degree | 2, 3 or 12, A, B, C | `F/R/coarsened_data/m_<variable>_cg_R.nc` | Python |
 | `04_to_cdftools_layout.py` | 5 | puts coarse T and S in the layout `cdfbn2` reads | 4, 1 | `..._{thetao,so}_cg_R_cdftools.nc` | Python |
-| `cdfbn2` (CDFTOOLS) | 6 | N2 on the 1/4 grid, and on the 1/16 grid from the subset | 5, 1 | `..._bn2_cg_R.nc`, `F/R/m_bn2_R.nc` | C |
+| `cdfbn2` ([CDFTOOLS](https://github.com/meom-group/CDFTOOLS)) | 6 | N2 on the 1/4 grid, and on the 1/16 grid from the subset | 5, 1 | `..._bn2_cg_R.nc`, `F/R/m_bn2_R.nc` | C |
 | `05_deformation_radius.py` | 7 | deformation radius Ld from N2, `--mode cg` or `non_cg` | 6, A | `..._Ld_cg_R.nc`, `F/R/m_Ld_R.nc` | Python |
 | `05_time_mean_ld.py` | 8 | time mean of Ld over the whole period | 7, all months | `MINT_1d_00610101_00721230_Ld_{cg_,}R.nc` | Python |
 | `06_scale_aware_feature.py` | 9 | `sa`, Ld over the grid scale | 7, A | `..._sa_cg_R.nc` | Python |
@@ -182,7 +182,7 @@ Software, recorded in `envs/`:
   Those two environments (Python 3.12 with `gcm_filters`, Python 3.10 with `xesmf`) are in
   the git history, as `envs/pyCDFTOOLS.yml` and `envs/regrid_xesmf_cond.yml` at commit
   `f9bf780`.
-- `ncks` from NCO, with a `python3` that has PyYAML, and `cdfbn2` from CDFTOOLS, with
+- `ncks` from NCO, with a `python3` that has PyYAML, and `cdfbn2` from [CDFTOOLS](https://github.com/meom-group/CDFTOOLS), with
   its namelists in `cdftools/`: see `envs/other_tools.md`.
 
 
