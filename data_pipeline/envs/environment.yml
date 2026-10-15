@@ -1,18 +1,18 @@
 # One environment for every Python step of the data pipeline.
 #
-# NOT TESTED. It was written from the imports of the scripts and the versions in the two
-# exports below, and was not built or run. The checks of the pipeline against the released
-# files were run in pyCDFTOOLS.yml and regrid_xesmf_cond.yml, which are the record of what
-# worked. If this file does not solve or gives different numbers, use those two.
+# NOT TESTED. It was written from the imports of the scripts and the versions of the two
+# environments the checks of the pipeline were run in, and was not built or run. Those
+# two were `conda env export` files, envs/pyCDFTOOLS.yml (Python 3.12, no xesmf) and
+# envs/regrid_xesmf_cond.yml (Python 3.10, no gcm_filters), kept in this repository at
+# commit f9bf780. If this file does not solve or gives different numbers, build from
+# those.
 #
 # Lists only what the scripts in data_pipeline/ import, and what those packages need to
-# read and write the files, with the versions of the two environments the checks were
-# run with (pyCDFTOOLS.yml and regrid_xesmf_cond.yml, in this directory). conda adds the
-# rest.
+# read and write the files. conda adds the rest.
 #
 # Python 3.10 is the version of the xesmf environment: xesmf and ESMF are the part that
 # is most sensitive to the Python version, and every other package here is available
-# for it. The pyCDFTOOLS environment ran on Python 3.12.
+# for it.
 #
 # Imports, by script (13 Python scripts):
 #   xarray, numpy, pyyaml, argparse, datetime, logging, os, sys  all or most scripts

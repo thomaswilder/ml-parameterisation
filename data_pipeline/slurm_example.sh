@@ -50,7 +50,7 @@ END=00730101                          # the end of the period, exclusive: 007301
 CONFIG=/path/to/config.yml            # your copy of config.example.yml
 PIPE=/path/to/data_pipeline           # this directory
 WORK=/path/to/work                    # the working directory: each script writes its .log here
-ENV_P=/path/to/pyCDFTOOLS             # conda environment P (envs/pyCDFTOOLS.yml)
+ENV_P=/path/to/pyCDFTOOLS             # conda environment P (see envs/environment.yml)
 
 source /path/to/miniconda3/bin/activate
 conda activate "$ENV_P"

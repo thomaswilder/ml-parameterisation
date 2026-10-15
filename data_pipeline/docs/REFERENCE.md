@@ -38,14 +38,16 @@ years 0061 to 0072.
 
 ## Environments
 
-Each step runs in one of four environments. The two conda environments are recorded
-exactly in [`envs/`](../envs/) (`conda env export`); they were not merged, because neither has
-everything (P has no xesmf, X has no gcm_filters).
+Each step was run in one of four environments. The checks used two conda environments, P
+and X, because neither has everything (P has no xesmf, X has no gcm_filters). Their
+`conda env export` files, `envs/pyCDFTOOLS.yml` and `envs/regrid_xesmf_cond.yml`, were later
+replaced by the single, untested [`envs/environment.yml`](../envs/environment.yml) and are in
+the git history at commit `f9bf780`. The versions the checks ran with are in the table.
 
 | | Environment | Used by |
 |---|---|---|
-| P | [`envs/pyCDFTOOLS.yml`](../envs/pyCDFTOOLS.yml): Python 3.12.1, xarray 2023.12.0, numpy 1.26.3, dask 2023.12.1, netCDF4 1.6.5, xgcm 0.8.1, xnemogcm 0.4.2, gcm_filters 0.5.1 | `00_regrid_grids.py`, `00_xnemo_mask.py`, `02_filter.py`, `04_to_cdftools_layout.py`, `05_deformation_radius.py`, `05_time_mean_ld.py`, `06_scale_aware_feature.py`, `07_vorticity.py`, `08_kinetic_energy.py`, `09_combine.py` |
-| X | [`envs/regrid_xesmf_cond.yml`](../envs/regrid_xesmf_cond.yml): Python 3.10.13, xarray 2023.12.0, numpy 1.26.2, dask 2023.12.0, netCDF4 1.6.5, xgcm 0.8.1, xnemogcm 0.4.2, xesmf 0.8.2 with ESMF 8.4.2 | `00_regrid_weights.py`, `00_filter_kappa.py`, `03_regrid.py` (everything that imports xesmf) |
+| P | `pyCDFTOOLS`: Python 3.12.1, xarray 2023.12.0, numpy 1.26.3, dask 2023.12.1, netCDF4 1.6.5, xgcm 0.8.1, xnemogcm 0.4.2, gcm_filters 0.5.1 | `00_regrid_grids.py`, `00_xnemo_mask.py`, `02_filter.py`, `04_to_cdftools_layout.py`, `05_deformation_radius.py`, `05_time_mean_ld.py`, `06_scale_aware_feature.py`, `07_vorticity.py`, `08_kinetic_energy.py`, `09_combine.py` |
+| X | `regrid_xesmf_cond`: Python 3.10.13, xarray 2023.12.0, numpy 1.26.2, dask 2023.12.0, netCDF4 1.6.5, xgcm 0.8.1, xnemogcm 0.4.2, xesmf 0.8.2 with ESMF 8.4.2 | `00_regrid_weights.py`, `00_filter_kappa.py`, `03_regrid.py` (everything that imports xesmf) |
 | N | `ncks` (NCO 5.3.3 made the released files) and a `python3` with PyYAML, which the two shell scripts use to read the config. On JASMIN both come with `module load jaspy` | `00_regional_masks.sh`, `01_subset.sh` |
 | C | `cdfbn2` of CDFTOOLS v4.0.0-61-g9498c03, built with gfortran against netCDF; see [`envs/other_tools.md`](../envs/other_tools.md) | row 6 |
 

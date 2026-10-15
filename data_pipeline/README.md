@@ -27,8 +27,8 @@ The 1/16 degree model output is cut to a region, filtered and coarse-grained to 
 degree grid. The features (`sa`, `vor`, `mke`) come from the coarse fields. The target
 (eddy kinetic energy) is made on the fine grid first and then coarse-grained. The
 letters and numbers are the "rows" used in the scripts and in the reference. The tag in
-each box is the software that runs it: **P** the `pyCDFTOOLS` environment, **X** the
-`regrid_xesmf_cond` environment, **N** `ncks`, **C** `cdfbn2`.
+each box is the software that runs it: **N** `ncks`, **C** `cdfbn2`; the others are
+Python scripts.
 
 ```mermaid
 flowchart TD
@@ -36,35 +36,35 @@ flowchart TD
 
     subgraph REG ["Once per region"]
         A["A: 00_regional_masks.sh<br/>regional masks [N]"]
-        B["B: 00_regrid_grids.py<br/>cell centres and corners [P]"]
-        C["C: 00_regrid_weights.py<br/>regridding weights [X]"]
-        D["D: 00_filter_kappa.py<br/>filter-scale field [X]"]
-        E["E: 00_xnemo_mask.py<br/>mask with xnemogcm names [P]"]
+        B["B: 00_regrid_grids.py<br/>cell centres and corners"]
+        C["C: 00_regrid_weights.py<br/>regridding weights"]
+        D["D: 00_filter_kappa.py<br/>filter-scale field"]
+        E["E: 00_xnemo_mask.py<br/>mask with xnemogcm names"]
     end
 
     subgraph PREP ["Every month: subset, filter, coarse-grain, N2, Ld"]
         S1["1: 01_subset.sh<br/>regional subsets [N]"]
-        S2["2, 3: 02_filter.py<br/>filter T, S and velocity [P]"]
-        S4["4: 03_regrid.py<br/>coarse-grain to 1/4 degree [X]"]
-        S5["5: 04_to_cdftools_layout.py<br/>cdfbn2 layout [P]"]
+        S2["2, 3: 02_filter.py<br/>filter T, S and velocity"]
+        S4["4: 03_regrid.py<br/>coarse-grain to 1/4 degree"]
+        S5["5: 04_to_cdftools_layout.py<br/>cdfbn2 layout"]
         S6["6: cdfbn2<br/>N2 on both grids [C]"]
-        S7["7: 05_deformation_radius.py<br/>Ld on both grids [P]"]
+        S7["7: 05_deformation_radius.py<br/>Ld on both grids"]
     end
 
-    S8["8: 05_time_mean_ld.py<br/>time mean of Ld, all 144 months [P]"]
+    S8["8: 05_time_mean_ld.py<br/>time mean of Ld, all 144 months"]
 
     subgraph FEAT ["Every month: features"]
-        F9["9: 06_scale_aware_feature.py<br/>sa [P]"]
-        F10["10: 07_vorticity.py<br/>vor [P]"]
-        F11["11: 08_kinetic_energy.py<br/>mke [P]"]
+        F9["9: 06_scale_aware_feature.py<br/>sa"]
+        F10["10: 07_vorticity.py<br/>vor"]
+        F11["11: 08_kinetic_energy.py<br/>mke"]
     end
 
     subgraph TARG ["Every month: target"]
-        T12["12: 08_kinetic_energy.py<br/>eke on the fine grid [P]"]
-        T13["13: 03_regrid.py<br/>eke to 1/4 degree [X]"]
+        T12["12: 08_kinetic_energy.py<br/>eke on the fine grid"]
+        T13["13: 03_regrid.py<br/>eke to 1/4 degree"]
     end
 
-    J["14: 09_combine.py<br/>join the months [P]"]
+    J["14: 09_combine.py<br/>join the months"]
 
     subgraph OUT ["The five training files"]
         O1["vor"]
@@ -113,21 +113,21 @@ month, `MINT_1d_<first day>_<last day>`.
 | Script | Row | What it does | Reads | Writes | Env |
 |---|---|---|---|---|---|
 | `00_regional_masks.sh` | A | cuts the regional masks from the two global masks | the global masks | `F/R/mesh_mask_exp{16,4}_R.nc`, and `_surface_` (first level) versions | N |
-| `00_regrid_grids.py` | B | cell centres and corners of both grids; stops if the box does not give the index ranges of the config | the global masks | `F/R/R_input_grid_16.npy`, `R_target_grid_025.npy` | P |
-| `00_regrid_weights.py` | C | conservative weights, 1/16 to 1/4 degree | B | `F/R/weights_R.nc` | X |
-| `00_filter_kappa.py` | D | kappa, which sets the filter scale of rows 2 and 3 | A, B | `paths.kappa/kappa16_R.nc` | X |
-| `00_xnemo_mask.py` | E | the 1/4 degree mask with xnemogcm dimension names | A | `F/R/coarsened_data/mesh_mask_exp4_R_xnemo.nc` (a training file) | P |
+| `00_regrid_grids.py` | B | cell centres and corners of both grids; stops if the box does not give the index ranges of the config | the global masks | `F/R/R_input_grid_16.npy`, `R_target_grid_025.npy` | Python |
+| `00_regrid_weights.py` | C | conservative weights, 1/16 to 1/4 degree | B | `F/R/weights_R.nc` | Python |
+| `00_filter_kappa.py` | D | kappa, which sets the filter scale of rows 2 and 3 | A, B | `paths.kappa/kappa16_R.nc` | Python |
+| `00_xnemo_mask.py` | E | the 1/4 degree mask with xnemogcm dimension names | A | `F/R/coarsened_data/mesh_mask_exp4_R_xnemo.nc` (a training file) | Python |
 | `01_subset.sh` | 1 | cuts the region from the global output | `m_grid_{T,U,V}.nc` | `paths.subsets/R/m_grid_{T,U,V}_R.nc` | N |
-| `02_filter.py` | 2, 3 | filters T and S (`grid_T`) or the surface velocity (`grid_UV`) on the fine grid | 1, A, D | `F/R/filtered_data/m_{thetao,so,uo,vo}_f_R.nc` | P |
-| `03_regrid.py` | 4, 13 | coarse-grains a filtered field, or the fine-grid `eke`, to 1/4 degree | 2, 3 or 12, A, B, C | `F/R/coarsened_data/m_<variable>_cg_R.nc` | X |
-| `04_to_cdftools_layout.py` | 5 | puts coarse T and S in the layout `cdfbn2` reads | 4, 1 | `..._{thetao,so}_cg_R_cdftools.nc` | P |
+| `02_filter.py` | 2, 3 | filters T and S (`grid_T`) or the surface velocity (`grid_UV`) on the fine grid | 1, A, D | `F/R/filtered_data/m_{thetao,so,uo,vo}_f_R.nc` | Python |
+| `03_regrid.py` | 4, 13 | coarse-grains a filtered field, or the fine-grid `eke`, to 1/4 degree | 2, 3 or 12, A, B, C | `F/R/coarsened_data/m_<variable>_cg_R.nc` | Python |
+| `04_to_cdftools_layout.py` | 5 | puts coarse T and S in the layout `cdfbn2` reads | 4, 1 | `..._{thetao,so}_cg_R_cdftools.nc` | Python |
 | `cdfbn2` (CDFTOOLS) | 6 | N2 on the 1/4 grid, and on the 1/16 grid from the subset | 5, 1 | `..._bn2_cg_R.nc`, `F/R/m_bn2_R.nc` | C |
-| `05_deformation_radius.py` | 7 | deformation radius Ld from N2, `--mode cg` or `non_cg` | 6, A | `..._Ld_cg_R.nc`, `F/R/m_Ld_R.nc` | P |
-| `05_time_mean_ld.py` | 8 | time mean of Ld over the whole period | 7, all months | `MINT_1d_00610101_00721230_Ld_{cg_,}R.nc` | P |
-| `06_scale_aware_feature.py` | 9 | `sa`, Ld over the grid scale | 7, A | `..._sa_cg_R.nc` | P |
-| `07_vorticity.py` | 10 | relative vorticity of the coarse velocity | 4, A | `..._vor_cg_R.nc` | P |
-| `08_kinetic_energy.py` | 11, 12 | `--variable mke` (coarse velocity filtered at 3Ld) or `eke` (fine velocity, below the filter scale) | 4 or 1, 8, A | `..._mke_R.nc`, `F/R/m_eke_Lmin3LdO25_R.nc` | P |
-| `09_combine.py` | 14 | joins the months into a training file | 9, 10, 11 or 13 | `F/R/coarsened_data/MINT_1d_<y0>-<y1>_*.nc` | P |
+| `05_deformation_radius.py` | 7 | deformation radius Ld from N2, `--mode cg` or `non_cg` | 6, A | `..._Ld_cg_R.nc`, `F/R/m_Ld_R.nc` | Python |
+| `05_time_mean_ld.py` | 8 | time mean of Ld over the whole period | 7, all months | `MINT_1d_00610101_00721230_Ld_{cg_,}R.nc` | Python |
+| `06_scale_aware_feature.py` | 9 | `sa`, Ld over the grid scale | 7, A | `..._sa_cg_R.nc` | Python |
+| `07_vorticity.py` | 10 | relative vorticity of the coarse velocity | 4, A | `..._vor_cg_R.nc` | Python |
+| `08_kinetic_energy.py` | 11, 12 | `--variable mke` (coarse velocity filtered at 3Ld) or `eke` (fine velocity, below the filter scale) | 4 or 1, 8, A | `..._mke_R.nc`, `F/R/m_eke_Lmin3LdO25_R.nc` | Python |
+| `09_combine.py` | 14 | joins the months into a training file | 9, 10, 11 or 13 | `F/R/coarsened_data/MINT_1d_<y0>-<y1>_*.nc` | Python |
 | `config.example.yml` | | every path, and the lat/lon box and index ranges of each region | | | |
 | `slurm_example.sh` | | one step (row 12) as a SLURM job, with placeholders | | | |
 
@@ -135,24 +135,24 @@ month, `MINT_1d_<first day>_<last day>`.
 
 Copy `config.example.yml`, set the paths, and pass the copy as `--config`. Every script
 takes `--region` and `--config`; every script except the five `00_*` also takes `--start`
-and `--end`. Run each in its environment (a full `conda activate` of the environment;
-xesmf does not import otherwise), from a directory you can write to: some scripts write a
-`.log` file there.
+and `--end`. Activate the environment first (a full `conda activate`; xesmf does not import
+otherwise), and run from a directory you can write to: some scripts write a `.log` file
+there.
 
 ```bash
-# once per region: the regional masks [N], the regridding grids [P], the weights [X]
+# once per region: the regional masks [N], the regridding grids, the weights
 bash 00_regional_masks.sh --region SO_JET --config config.yml
 python 00_regrid_grids.py --region SO_JET --config config.yml
 python 00_regrid_weights.py --region SO_JET --config config.yml
 
-# one month: filter temperature [P], then coarse-grain it [X]
+# one month: filter temperature, then coarse-grain it
 python 02_filter.py --region SO_JET --start 00610101 --end 00610201 --config config.yml --variable grid_T --variable-name thetao
 python 03_regrid.py --region SO_JET --start 00610101 --end 00610201 --config config.yml --variable thetao
 
-# the scale-aware feature [P]
+# the scale-aware feature
 python 06_scale_aware_feature.py --region SO_JET --start 00610101 --end 00610201 --config config.yml
 
-# join the months into a training file [P]
+# join the months into a training file
 python 09_combine.py --region SO_JET --start 00610101 --end 00610201 --config config.yml --variable sa_cg
 ```
 
@@ -176,11 +176,12 @@ Not on Zenodo, so not here either:
 
 Software, recorded in `envs/`:
 
-- `envs/pyCDFTOOLS.yml`: environment P (xarray, xgcm, xnemogcm, gcm_filters).
-- `envs/regrid_xesmf_cond.yml`: environment X (xesmf with ESMF).
-- `envs/environment.yml`: a short list of just the packages the scripts import, as one
-  environment for all steps. Not tested: if it does not solve or gives different numbers,
-  use the two above, which are the environments the checks were run in.
+- `envs/environment.yml`: one environment for all the Python steps, listing only the
+  packages the scripts import. **Not tested**: it was written from the imports and the
+  package versions of the environments the checks were run in, and was not built or run.
+  Those two environments (Python 3.12 with `gcm_filters`, Python 3.10 with `xesmf`) are in
+  the git history, as `envs/pyCDFTOOLS.yml` and `envs/regrid_xesmf_cond.yml` at commit
+  `f9bf780`.
 - `ncks` from NCO, with a `python3` that has PyYAML, and `cdfbn2` from CDFTOOLS, with
   its namelists in `cdftools/`: see `envs/other_tools.md`.
 
