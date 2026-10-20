@@ -1,0 +1,46 @@
+# Paths config of the data pipeline, with placeholder paths: copy it, set the four
+# `paths` and the two `masks` to your directories, and pass the copy as `--config`.
+#
+# The directory layout below each root, and every file name, are fixed by the scripts:
+#
+#   {paths.model_output}/MINT_1d_<d0>_<d1>_grid_{T,U,V}.nc              global model output (not on Zenodo)
+#   {paths.subsets}/{region}/MINT_1d_<d0>_<d1>_grid_{T,U,V}_{region}.nc regional subsets (row 1)
+#   {paths.kappa}/kappa16_{region}.nc                                   filter-scale field (row D)
+#   {paths.features}/{region}/                                          masks, grids, weights, bn2, Ld, eke
+#   {paths.features}/{region}/filtered_data/                            filtered fields (rows 2, 3)
+#   {paths.features}/{region}/coarsened_data/                           everything on the 1/4 degree grid
+
+paths:
+  model_output: /path/to/NEMO_data/DINO/EXP16/production_take2/OUTPUTS
+  subsets: /path/to/NEMO_data/DINO/EXP16/production_take2
+  features: /path/to/NEMO_data/DINO/EXP16/features_take2
+  kappa: /path/to/NEMO_data/DINO/EXP16
+
+# the two global mesh masks (not on Zenodo)
+masks:
+  fine: /path/to/NEMO_data/DINO/EXP16/mesh_mask_exp16.nc     # 1/16 degree
+  coarse: /path/to/NEMO_data/DINO/EXP4/mesh_mask_025.nc      # 1/4 degree
+
+# Regions. lat, lon: the box that selects T points (row B). fine, coarse: the zero-based,
+# inclusive index ranges of that box on each grid, as given to `ncks -d` (rows A and 1).
+regions:
+  SO_JET:
+    lat: [-47.5, -37.5]
+    lon: [2.5, 17.5]
+    fine: {x: [41, 280], y: [726, 942]}
+    coarse: {x: [11, 70], y: [182, 235]}
+  SO_EAST:
+    lat: [-50, -40]
+    lon: [32.5, 47.5]
+    fine: {x: [521, 760], y: [665, 891]}
+    coarse: {x: [131, 190], y: [167, 223]}
+  SO_GYRE:
+    lat: [-65, -58]
+    lon: [18, 32]
+    fine: {x: [289, 512], y: [210, 445]}
+    coarse: {x: [73, 128], y: [53, 111]}
+  SO_TROP:
+    lat: [-25, -12.5]
+    lon: [18, 32]
+    fine: {x: [289, 512], y: [1178, 1389]}
+    coarse: {x: [73, 128], y: [295, 347]}

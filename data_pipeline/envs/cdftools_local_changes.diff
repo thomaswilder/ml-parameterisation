@@ -1,0 +1,249 @@
+diff --git a/Macrolib/macro.conda b/Macrolib/macro.conda
+index 1cc9dc0..f257c02 100644
+--- a/Macrolib/macro.conda
++++ b/Macrolib/macro.conda
+@@ -14,12 +14,12 @@ GSWLIB=
+ 
+ 
+ #F90=gfortran -v
+-F90=gfortran 
++F90=gfortran
+ MPF90=
+ #OMP=-fopenmp
+ OMP=
+-FFLAGS= -O  $(NCDF) $(NC4) $(CMIP6) $(GSW) -fPIC -Wl,-rpath-link,$(CONDA_PREFIX)/lib -fno-second-underscore -ffree-line-length-256 $(OMP)
+-LMPI=-lmpich
++FFLAGS= -Og $(NCDF) $(NC4) $(CMIP6) $(GSW) -fPIC -Wl,-rpath-link,$(CONDA_PREFIX)/lib -fno-second-underscore -ffree-line-length-256 $(OMP)
++#LMPI=-lmpich
+ 
+ INSTALL=$(WORKDIR)/bin
+ INSTALL_MAN=$(WORKDIR)/man
+diff --git a/src/cdfmean.f90 b/src/cdfmean.f90
+index 29f8023..3d6ad03 100644
+--- a/src/cdfmean.f90
++++ b/src/cdfmean.f90
+@@ -191,8 +191,8 @@ PROGRAM cdfmean
+   ENDIF
+ 
+   ! Open standard output with recl=256 to avoid wrapping of long lines (ifort)
+-  OPEN(6,FORM='FORMATTED',RECL=256)  ! ifort
+-  ! OPEN(6,FORM='FORMATTED')          ! gfortran
++  !OPEN(6,FORM='FORMATTED',RECL=256)  ! ifort
++  OPEN(6,FORM='FORMATTED')          ! gfortran
+ 
+   cglobal = 'Partial step computation'
+   ijarg = 1 
+diff --git a/src/cdfmoc.f90 b/src/cdfmoc.f90
+index 7a35ca0..d4bb461 100644
+--- a/src/cdfmoc.f90
++++ b/src/cdfmoc.f90
+@@ -665,11 +665,12 @@ CONTAINS
+     CALL cdf_findij ( rp_lonw_rapid,  rp_lon_gs,     rp_lat_rapid, rp_lat_rapid, &
+          &              idum         ,  iigs         , idum,         idum,         &
+          &              cd_coord=cn_fhgr, cd_point='F')
++    
+ 
+-  IF ( lg_vvl) THEN
+-     cn_fe3v = cf_vfil
+-     cn_ve3v = cn_ve3vvvl
+-  ENDIF
++    IF ( lg_vvl) THEN
++       cn_fe3v = cf_vfil
++       cn_ve3v = cn_ve3vvvl
++    ENDIF
+ 
+     ! ORCA2 fails to cdf_findij ( Med sea ... )
+     !   iiw     = 99
+@@ -710,7 +711,7 @@ CONTAINS
+        IF ( lg_vvl ) THEN ; it=jt
+        ELSE               ; it=1
+        ENDIF
+-
++   
+        IF ( it == jt ) THEN ! read each time only for vvl
+           DO jk = 1, npk
+              IF ( lfull ) THEN
+@@ -1199,7 +1200,7 @@ CONTAINS
+     INTEGER(KIND=4) :: idvar   ! working integer for ncdf variables
+     ! prepare output dataset: 7 variables
+     ! add 12 new variables for CLIVAR GSOP-GODAE intercomparison
+-    cf_moc = 'rapid_'//TRIM(cf_moc)
++!!    cf_moc = 'rapid_'//TRIM(cf_moc)
+     nvarout =  33
+     ALLOCATE ( stypvar(nvarout), ipk(nvarout), id_varout(nvarout) )
+     stypvar%cunits            = 'Sverdrup'
+@@ -1211,6 +1212,7 @@ CONTAINS
+     stypvar%savelog10         = 0.
+     stypvar%conline_operation = 'N/A'
+ 
++
+     stypvar%caxis             = 'T'
+     ipk(:) = 1  ! only amoc_rapid has ipk=npk
+     ! overturning classical way
+@@ -1401,7 +1403,7 @@ CONTAINS
+     PRINT*, 'idvar = ', idvar
+ 
+     ncout = create      ( cf_moc, 'none',  1, 1, npk, cdep=cn_vdepthw )
+-    ierr  = createvar   ( ncout,  stypvar, nvarout,   ipk, id_varout                              )
++    ierr  = createvar   ( ncout,  stypvar, nvarout,   ipk, id_varout )
+     ierr  = putheadervar( ncout,  cf_vfil, 1, 1, npk, pnavlon=rdumlon, pnavlat=rdumlat, pdep=gdepw)
+ 
+   END SUBROUTINE CreateOutputRapid
+diff --git a/src/cdfmocsig.f90 b/src/cdfmocsig.f90
+index 78f8f25..1863c03 100644
+--- a/src/cdfmocsig.f90
++++ b/src/cdfmocsig.f90
+@@ -98,7 +98,7 @@ PROGRAM cdfmocsig
+   TYPE(variable), DIMENSION(:), ALLOCATABLE       :: stypvar              ! output var properties
+ 
+   LOGICAL, DIMENSION(3)                           :: lbin                 ! flag for bin specifications
+-  LOGICAL                                         :: lntr                 ! flag for neutral density
++  LOGICAL                                         :: lntr   = .FALSE.     ! flag for neutral density
+   LOGICAL                                         :: lbas   = .FALSE.     ! flag for basins file
+   LOGICAL                                         :: lisodep= .FALSE.     ! flag for isopycnal zonal mean
+   LOGICAL                                         :: lprint = .FALSE.     ! flag for extra print
+@@ -371,7 +371,8 @@ PROGRAM cdfmocsig
+         !               for testing purposes only loop from 2 to 400
+         IF (lprint) PRINT *,' working at depth ',jk
+         ! Get velocities v at jj
+-        zv(:,:) = getvar(cf_vfil, cn_vomecrty, jk, npiglo, npjglo, ktime = jt)
++        IF (lprint) PRINT *,' meridional velocity is', cn_vomecrty, ' in file', cf_vfil
++        zv(:,:) = getvar(cf_vfil, cn_vomecrty, jk, npiglo, npjglo, ktime = jt) 
+         WHERE( zv == zspv ) zv = 0.
+         IF ( leiv ) THEN
+            zveiv(:,:) = getvar(cf_vfil, cn_vomeeivv, jk, npiglo,npjglo, ktime = jt)
+@@ -379,11 +380,14 @@ PROGRAM cdfmocsig
+         END IF
+         ! JMM remark : should be more correct to use t and s a V point ?
+         zt(:,:) = getvar(cf_tfil, cn_votemper, jk, npiglo, npjglo, ktime = jt)
++        IF (lprint) PRINT *,' temperature is', cn_votemper
+         zs(:,:) = getvar(cf_sfil, cn_vosaline, jk, npiglo, npjglo, ktime = jt)
++        IF (lprint) PRINT *,' salinity is', cn_vosaline
+         WHERE( zt == zspt ) zt = 0.
+         WHERE( zs == zsps ) zs = 0.
+ 
+         ! get e3v at latitude jj
++        IF (lprint) PRINT *,' vvl is', cn_ve3v
+         IF ( lfull ) THEN ; e3v(:,:) = e31d(jk)
+         ELSE              ; e3v(:,:) = getvar(cn_fe3v, cn_ve3v, jk, npiglo, npjglo, ktime=it, ldiom=.NOT.lg_vvl )
+         ENDIF
+diff --git a/src/cdfvT.f90 b/src/cdfvT.f90
+index 209ae65..11195d9 100644
+--- a/src/cdfvT.f90
++++ b/src/cdfvT.f90
+@@ -125,6 +125,8 @@ PROGRAM cdfvT
+      END SELECT
+   ENDDO
+ 
++  PRINT *, 'config name is', config
++  PRINT *, 'ctag_lst(1) is', ctag_lst(1)
+   cf_tfil = SetFileName( config, ctag_lst(1), 'T')
+ 
+   npiglo = getdim (cf_tfil,cn_x)
+@@ -166,12 +168,13 @@ PROGRAM cdfvT
+      ENDIF
+ 
+      DO jt = 1, ntags
+-        ctag=ctag_lst(jt) 
++        ctag=ctag_lst(jt)
+         cf_tfil = SetFileName( config, ctag, 'T', ld_stop=.TRUE. )
+         cf_sfil = SetFileName( config, ctag, 'S', ld_stop=.FALSE.)      ! do not stop if gridS/grid_S not found !
+         IF ( chkfile (cf_sfil, ld_verbose=.FALSE.) ) cf_sfil = cf_tfil  ! do not complain if not found
+ 
+         npt = getdim (cf_tfil, cn_t)
++        !PRINT *,'number of time dimensions in single file ', npt
+         IF ( lcaltmean ) THEN
+            ALLOCATE ( dtim(npt) )
+            dtim        = getvar1d(cf_tfil, cn_vtimec, npt)
+@@ -234,6 +237,9 @@ PROGRAM cdfvT
+ 
+         END DO  !jtt
+      END DO  ! arg list
++
++     !PRINT *,'ntframe is ', ntframe
++
+      ! finish with level jk ; compute mean (assume spval is 0 )
+      ! JMM In the following line multiplication by 1.e0 is a trick to write real*4 values.
+      IF ( lg_vvl) THEN
+diff --git a/src/cdfzonalmean.f90 b/src/cdfzonalmean.f90
+index f573a27..b34b06b 100644
+--- a/src/cdfzonalmean.f90
++++ b/src/cdfzonalmean.f90
+@@ -321,21 +321,23 @@ PROGRAM cdfzonalmean
+                  DO ji=1,npiglo
+                     dtmp = 1.d0 * zmask(jbasin,ji,jj)*zmaskvar(ji,jj)*zv(ji,jj)
+                     dzomean(jj,jk) = dzomean(jj,jk) + dl_surf(ji,jj)* dtmp
+-                    darea  (jj,jk) = darea  (jj,jk) + dl_surf(ji,jj)* zmask(jbasin,ji,jj)*zmaskvar(ji,jj)
+-                    IF( lmax )                 rzomax (jj,jk) = MAX(rzomax (jj,jk), dtmp )
+-                    IF( lmax .AND. dtmp /= 0.) rzomin (jj,jk) = MIN(rzomin (jj,jk), dtmp )
++                    darea(jj,jk) = darea(jj,jk) + dl_surf(ji,jj)* zmask(jbasin,ji,jj)*zmaskvar(ji,jj)
++                    IF( lmax )                 rzomax(jj,jk) = MAX(rzomax(jj,jk), dtmp )
++                    IF( lmax .AND. dtmp /= 0.) rzomin(jj,jk) = MIN(rzomin(jj,jk), dtmp )
+                  END DO
++                 IF (ldebug) PRINT *, 'darea is: ', darea(jj,jk)
++                 IF (ldebug) PRINT *, 'dzomean is: ', dzomean(jj,jk)
+               END DO
+               !$OMP  END  PARALLEL DO
+ 
+               ! compute the mean value if the darea is not 0, else assign spval
+-              WHERE (darea /= 0 ) 
++              WHERE (darea /= 0.d0 )
+                  dzomean=dzomean/darea
+-              ELSEWHERE            
++              ELSEWHERE
+                  dzomean=zspval
+               ENDWHERE
+               IF (lmax)  THEN      
+-                 WHERE (darea == 0 ) 
++                 WHERE (darea == 0.d0 ) 
+                     rzomax=zspval ; rzomin=zspval 
+                  ENDWHERE
+               ENDIF
+diff --git a/src/modcdfnames.F90 b/src/modcdfnames.F90
+index 942c8d6..7530ca2 100644
+--- a/src/modcdfnames.F90
++++ b/src/modcdfnames.F90
+@@ -236,6 +236,7 @@ MODULE modCdfNames
+     NAMELIST/namvars/ cn_vozout, cn_vomevt, cn_vozous, cn_vomevs
+     NAMELIST/namvars/ cn_sozout, cn_somevt, cn_sozous, cn_somevs
+     NAMELIST/namvars/ cn_sozoutrp, cn_somevtrp
++    NAMELIST/namvars/ cn_sozotaux
+     NAMELIST/namvars/ cn_soicecov
+     NAMELIST/namvars/ cn_vosigma0, cn_vosigmai, cn_vosigntr, cn_vodepiso, cn_isothick
+     NAMELIST/namvars/ cn_iicethic, cn_ileadfra, cn_iicevelu, cn_iicevelv
+@@ -340,7 +341,7 @@ CONTAINS
+     !!----------------------------------------------------------------------
+     CALL fdate(cl_date)
+ !   cl_date=fdate()
+-    OPEN(iout, FILE=cl_filout, RECL=200)
++    OPEN(iout, FILE=cl_filout)
+     WRITE(iout, '(a,a)' ) ' ! ', cl_date
+     WRITE(iout, '(a)' ) ' ! Namelist automatically generated by PrintCdfNames '
+     WRITE(iout, '(a)' ) ' ! Do not edit without changing its name ... '
+diff --git a/src/modutils.f90 b/src/modutils.f90
+index 20a2c5a..aef3516 100644
+--- a/src/modutils.f90
++++ b/src/modutils.f90
+@@ -97,14 +97,15 @@ CONTAINS
+        ll_stop = .TRUE.
+     ENDIF
+ 
+-    WRITE( SetFileName,'(a,"_",a,"_grid",a,".nc")') TRIM(cdconf), TRIM(cdtag), TRIM(cdgrid)
++    WRITE( SetFileName,'(a,"_",a,"_grid-",a,".nc")') TRIM(cdconf), TRIM(cdtag), TRIM(cdgrid)
+     IF ( chkfile(SetFileName ,ld_verbose=.FALSE.) ) THEN ! look for another name
+-       WRITE(SetFileName,'(a,"_",a,"_grid_",a,".nc")') TRIM(cdconf), TRIM(cdtag), TRIM(cdgrid)
+-       IF ( chkfile( SetFileName, ld_verbose=.FALSE.) .AND. ll_stop  ) THEN
+-          PRINT *,' ERROR : missing grid',TRIM(cdgrid),'or even grid_',TRIM(cdgrid),' file '
+-          STOP 97
+-       ENDIF
+-    ENDIF
++      WRITE(SetFileName,'(a,"_",a,"_grid_",a,".nc")') TRIM(cdconf), TRIM(cdtag), TRIM(cdgrid)
++      IF ( chkfile( SetFileName, ld_verbose=.FALSE.) .AND. ll_stop  ) THEN
++         PRINT *,' ERROR : missing grid',TRIM(cdgrid),'or even grid_',TRIM(cdgrid),' file '
++         STOP 97
++      ENDIF
++   ENDIF
++
+   END FUNCTION SetFileName
+ 
+   SUBROUTINE GetList ( cd_list, klist, ksiz )
