@@ -155,6 +155,7 @@ ml-parameterisation/
 │   ├── sample_model/
 │   │   └── sample*                     # Sample pre-trained keras model
 │   └── sample_offline_analysis.ipynb   # Sample notebook
+├── data_pipeline/                      # Scripts that made the training data from the DINO output (see its README)
 ├── tests/
 │   ├── __init__.py
 │   └── test_smoke.py                   # Smoke tests on synthetic data
@@ -205,7 +206,7 @@ The commit in the record is that of the git repository holding the installed pac
 
 ### Apply your own data
 
-You can of course do this. Our workflow uses a combination of [xnemogcm](https://github.com/rcaneill/xnemogcm), [CDFTOOLS](https://github.com/meom-group/CDFTOOLS/tree/master), [xesmf](https://github.com/pangeo-data/xESMF), and [gcm-filters](https://github.com/ocean-eddy-cpt/gcm-filters).
+You can of course do this. The scripts that made our training data from the DINO output are in [`data_pipeline/`](data_pipeline/README.md). The workflow uses a combination of [xnemogcm](https://github.com/rcaneill/xnemogcm), [CDFTOOLS](https://github.com/meom-group/CDFTOOLS/tree/master), [xesmf](https://github.com/pangeo-data/xESMF), and [gcm-filters](https://github.com/ocean-eddy-cpt/gcm-filters).
 
 The code expects, for each region, NetCDF files whose variables have the dimensions `t`, `y_c` and `x_c` and carry the coordinates `gphit` and `glamt`, and a mesh mask file with `tmask`, `e1t`, `e2t` and `ff_t`. The files in `examples/sample_dataset_for_github/` show the layout. A new region needs an entry in `dom_slice_dict` (see `domain` above).
 
