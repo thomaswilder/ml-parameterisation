@@ -31,7 +31,7 @@ test = [
 ]
 
 [project.urls]
-Repository = "https://github.com/thomaswilder/ml_model_ai4pex"
+Repository = "https://github.com/thomaswilder/ml-parameterisation"
 
 [tool.setuptools.packages.find]
 where = ["."]

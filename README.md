@@ -7,8 +7,8 @@ CNN and U-Net models for a Machine Learning eddy parameterisation for [NEMO](htt
 Clone the repository and install in editable mode into your Python environment:
 
 ```bash
-git clone https://github.com/thomaswilder/ml_model_ai4pex.git
-cd ml_model_ai4pex
+git clone https://github.com/thomaswilder/ml-parameterisation.git
+cd ml-parameterisation
 pip install -e .
 ```
 
@@ -133,7 +133,7 @@ model = keras.saving.load_model("examples/sample_model/sample_model.keras")
 ## Project Structure
 
 ```
-ml_model_ai4pex/
+ml-parameterisation/
 ├── ml_model_ai4pex/                    # Installable Python package
 │   ├── __init__.py
 │   ├── cnn.py                          # Fully convolutional architecture
