@@ -188,7 +188,7 @@ This runs the smoke tests in `tests/test_smoke.py`. They use synthetic data and 
 
 The U-Net model is trained on high-resolution data from the [DINO configuration ](https://github.com/vopikamm/DINO/tree/DINO_4.2.1). The model uses coarse-grained fields of: $\zeta/f$ (vorticity over Coriolis parameter, `vor`), coarse kinetic energy (`coarse_ke`), $L_d/\Delta s$ (baroclinic deformation radius over grid scale, `sa`), to predict fine kinetic energy, or eddy kinetic energy (`fine_ke`).
 
-The full dataset will be uploaded to a Zenodo repository on publication.
+The training data, the released models and their predictions are in a Zenodo data record (see [Citation and data](#citation-and-data)).
 
 ### Provenance
 
@@ -210,6 +210,11 @@ You can of course do this. The scripts that made our training data from the DINO
 
 The code expects, for each region, NetCDF files whose variables have the dimensions `t`, `y_c` and `x_c` and carry the coordinates `gphit` and `glamt`, and a mesh mask file with `tmask`, `e1t`, `e2t` and `ff_t`. The files in `examples/sample_dataset_for_github/` show the layout. A new region needs an entry in `dom_slice_dict` (see `domain` above).
 
+## Citation and data
+
+- **Code:** cite this repository as given in `CITATION.cff` (DOI: to be added when the release is archived on Zenodo).
+- **Data:** the training data of the four regions, the 105 released models and the 59 sensitivity models, their predictions, and the DINO run configuration are in the Zenodo data record [10.5281/zenodo.XXXXXXX](https://doi.org/10.5281/zenodo.XXXXXXX). Its `README.md` describes every file.
+
 ## License
 
-The code in this repository is licensed under the MIT License. See the `LICENSE` file for details. The full dataset used for the project is not included and is subject to separate access and use restrictions.
+The code in this repository is licensed under the MIT License. See the `LICENSE` file for details. The data record on Zenodo is released under CC0-1.0.

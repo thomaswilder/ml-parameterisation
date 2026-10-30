@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: ml-parameterisation
+abstract: "CNN/U-Net models for the prediction of Eddy Kinetic Energy"
+authors:
+  - family-names: Wilder
+    given-names: Thomas
+    orcid: "https://orcid.org/0000-0002-1108-4655"
+    affiliation: "University of Reading, National Centre for Atmospheric Science"
+version: 1.0.0
+license: MIT
+repository-code: "https://github.com/thomaswilder/ml-parameterisation"
+keywords:
+  - machine learning
+  - ocean modelling
+  - eddy parameterisation
+  - NEMO
+  - eddy kinetic energy
