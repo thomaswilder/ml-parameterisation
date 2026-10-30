@@ -1,5 +1,7 @@
 # A Neural Network for the prediction of Eddy Kinetic Energy in GEOMETRIC
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23815034.svg)](https://doi.org/10.5281/zenodo.23815034)
+
 CNN and U-Net models for a Machine Learning eddy parameterisation for [NEMO](https://www.nemo-ocean.eu/) developed as part of the [AI4PEX](https://ai4pex.eu/) project. The models learn to predict eddy kinetic energy from eddy-permitting resolution variables. The NN will form an ML-GEOMETRIC to replace the eddy energy budget in [Mak et al., 2023](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2023MS003886).
 
 ## Installation
@@ -212,7 +214,7 @@ The code expects, for each region, NetCDF files whose variables have the dimensi
 
 ## Citation and data
 
-- **Code:** cite this repository as given in `CITATION.cff` (DOI: to be added when the release is archived on Zenodo).
+- **Code:** cite this repository as given in `CITATION.cff`: [10.5281/zenodo.23815034](https://doi.org/10.5281/zenodo.23815034) (all versions; v1.0.0 is [10.5281/zenodo.23815035](https://doi.org/10.5281/zenodo.23815035)).
 - **Data:** the training data of the four regions, the 105 released models and the 59 sensitivity models, their predictions, and the DINO run configuration are in the Zenodo data record [10.5281/zenodo.23814760](https://doi.org/10.5281/zenodo.23814760). Its `README.md` describes every file.
 
 ## License
