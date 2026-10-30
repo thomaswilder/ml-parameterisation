@@ -5,7 +5,7 @@ DINO model output to the five files per region that the models read. They are
 published so that a reader can see how those files were made, and repeat it.
 
 The training files are on Zenodo, in the data record
-[10.5281/zenodo.XXXXXXX](https://doi.org/10.5281/zenodo.XXXXXXX), for the four regions
+[10.5281/zenodo.23814760](https://doi.org/10.5281/zenodo.23814760), for the four regions
 `SO_JET`, `SO_EAST`, `SO_GYRE` and `SO_TROP`. **The files on Zenodo are the reference.** They were not made again for
 the release, and the pipeline is not needed to use the models.
 

@@ -213,7 +213,7 @@ The code expects, for each region, NetCDF files whose variables have the dimensi
 ## Citation and data
 
 - **Code:** cite this repository as given in `CITATION.cff` (DOI: to be added when the release is archived on Zenodo).
-- **Data:** the training data of the four regions, the 105 released models and the 59 sensitivity models, their predictions, and the DINO run configuration are in the Zenodo data record [10.5281/zenodo.XXXXXXX](https://doi.org/10.5281/zenodo.XXXXXXX). Its `README.md` describes every file.
+- **Data:** the training data of the four regions, the 105 released models and the 59 sensitivity models, their predictions, and the DINO run configuration are in the Zenodo data record [10.5281/zenodo.23814760](https://doi.org/10.5281/zenodo.23814760). Its `README.md` describes every file.
 
 ## License
 
